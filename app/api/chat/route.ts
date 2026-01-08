@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Select model based on premium status
-    const model = isPremium ? 'llama-3.3-70b-versatile' : 'gemma2-9b-it'
+    const model = isPremium ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant'
     const botName = modelName || 'Zenith Sync 3.0'
 
     let systemPrompt = SYSTEM_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
