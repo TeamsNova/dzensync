@@ -382,6 +382,84 @@ body {
   letter-spacing: 0.5px;
 }
 
+.message-text {
+  white-space: pre-wrap;
+}
+
+/* Message Actions Menu */
+.message.assistant {
+  position: relative;
+}
+
+.message-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.message.assistant:hover .message-actions {
+  opacity: 1;
+}
+
+.message-menu-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  transition: all 0.15s;
+}
+
+.message-menu-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text);
+}
+
+.message-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--bg2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 6px;
+  min-width: 140px;
+  z-index: 50;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.message-menu button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+
+.message-menu button:hover {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.message-menu button i {
+  color: var(--muted);
+}
+
 @keyframes typing {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
   30% { transform: translateY(-6px); opacity: 1; }
