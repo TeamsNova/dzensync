@@ -271,9 +271,13 @@ export default function Home() {
 
   // Message content with custom code parsing
   const MessageContent = ({ content, onOpenCode, onCopyCode }: { content: string; onOpenCode: (code: string, lang: string) => void; onCopyCode: (code: string) => void }) => {
-    // Parse code blocks manually: ```lang\ncode\n``` or ```\ncode\n```
+    // Parse code blocks: ```lang code ``` or ``` code ```
+    // Support both regular backticks and various unicode variants
     const parts: { type: 'text' | 'code'; content: string; language?: string }[] = []
-    const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g
+    
+    // Match ``` with optional language, then content, then closing ```
+    // Also handle cases where there's no newline after opening ```
+    const codeBlockRegex = /`{3}(\w*)\s*([\s\S]*?)`{3}/g
     let lastIndex = 0
     let match
 
@@ -286,14 +290,54 @@ export default function Home() {
       parts.push({ type: 'code', content: match[2].trim(), language: match[1] || '' })
       lastIndex = match.index + match[0].length
     }
+    
     // Add remaining text
     if (lastIndex < content.length) {
       parts.push({ type: 'text', content: content.slice(lastIndex) })
     }
 
-    // If no code blocks found, just render as markdown
-    if (parts.length === 0) {
-      parts.push({ type: 'text', content })
+    // If no code blocks found, render everything as text
+    if (parts.length === 0 || (parts.length === 1 && parts[0].type === 'text' && parts[0].content === content)) {
+      // Check if content looks like code (has def, function, class, etc.)
+      const looksLikeCode = /^(def |function |class |import |from |const |let |var |#include)/.test(content.trim())
+      if (looksLikeCode && content.length > 100) {
+        return (
+          <div className="code-block">
+            <div className="code-header">
+              <span className="code-lang">code</span>
+              <div className="code-actions">
+                <button onClick={() => onCopyCode(content)} title="Копировать">
+                  <i data-lucide="copy" style={{width: 14, height: 14}}></i>
+                </button>
+                <button onClick={() => onOpenCode(content, '')} title="Открыть">
+                  <i data-lucide="maximize-2" style={{width: 14, height: 14}}></i>
+                </button>
+              </div>
+            </div>
+            <pre><code>{content}</code></pre>
+          </div>
+        )
+      }
+      
+      return (
+        <ReactMarkdown
+          components={{
+            code({ children }) { return <code className="inline-code">{children}</code> },
+            pre({ children }) { return <pre className="code-pre">{children}</pre> },
+            p({ children }) { return <p>{children}</p> },
+            strong({ children }) { return <strong>{children}</strong> },
+            em({ children }) { return <em>{children}</em> },
+            ul({ children }) { return <ul>{children}</ul> },
+            ol({ children }) { return <ol>{children}</ol> },
+            li({ children }) { return <li>{children}</li> },
+            h1({ children }) { return <h3>{children}</h3> },
+            h2({ children }) { return <h4>{children}</h4> },
+            h3({ children }) { return <h5>{children}</h5> },
+          }}
+        >
+          {content}
+        </ReactMarkdown>
+      )
     }
 
     return (
