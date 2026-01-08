@@ -355,13 +355,25 @@ export default function Home() {
                       {msg.role === 'assistant' ? (
                         <ReactMarkdown
                           components={{
-                            code({ className, children, ...props }) {
+                            code({ className, children }) {
                               const match = /language-(\w+)/.exec(className || '')
                               const codeString = String(children).replace(/\n$/, '')
-                              if (match || codeString.includes('\n')) {
-                                return <CodeBlock language={match?.[1] || ''}>{codeString}</CodeBlock>
+                              // Always render as code block if it has language class or is long
+                              if (match) {
+                                return <CodeBlock language={match[1]}>{codeString}</CodeBlock>
                               }
-                              return <code className="inline-code" {...props}>{children}</code>
+                              return <code className="inline-code">{children}</code>
+                            },
+                            pre({ children, node }) {
+                              // If pre contains a code element, extract and render as CodeBlock
+                              const codeElement = node?.children?.[0] as any
+                              if (codeElement?.tagName === 'code') {
+                                const className = codeElement.properties?.className?.[0] || ''
+                                const match = /language-(\w+)/.exec(className)
+                                const codeContent = codeElement.children?.[0]?.value || ''
+                                return <CodeBlock language={match?.[1] || ''}>{codeContent}</CodeBlock>
+                              }
+                              return <pre>{children}</pre>
                             },
                             p({ children }) { return <p>{children}</p> },
                             strong({ children }) { return <strong>{children}</strong> },
