@@ -13,36 +13,81 @@ interface TavilyResult {
 
 interface TavilyResponse {
   results: TavilyResult[]
+  answer?: string
+}
+
+async function searchDuckDuckGo(query: string): Promise<TavilyResult[]> {
+  try {
+    const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    })
+    
+    if (!response.ok) return []
+    
+    const html = await response.text()
+    const results: TavilyResult[] = []
+    
+    // Parse snippets
+    const snippetRegex = /class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g
+    const urlRegex = /class="result__url"[^>]*>([\s\S]*?)<\/a>/g
+    const titleRegex = /class="result__a"[^>]*>([\s\S]*?)<\/a>/g
+    
+    const snippets = [...html.matchAll(snippetRegex)].map(m => m[1].replace(/<[^>]+>/g, '').trim())
+    const urls = [...html.matchAll(urlRegex)].map(m => m[1].replace(/<[^>]+>/g, '').trim())
+    const titles = [...html.matchAll(titleRegex)].map(m => m[1].replace(/<[^>]+>/g, '').trim())
+    
+    for (let i = 0; i < Math.min(snippets.length, 5); i++) {
+      if (snippets[i] && snippets[i].length > 20) {
+        results.push({
+          title: titles[i] || `Результат ${i + 1}`,
+          url: urls[i]?.startsWith('http') ? urls[i] : `https://${urls[i]}`,
+          content: snippets[i]
+        })
+      }
+    }
+    
+    return results
+  } catch {
+    return []
+  }
 }
 
 async function searchWeb(query: string): Promise<{ results: TavilyResult[], error?: string }> {
-  if (!process.env.TAVILY_API_KEY) {
-    return { results: [], error: 'Tavily API key not configured' }
+  // Try Tavily first if API key exists
+  if (process.env.TAVILY_API_KEY) {
+    try {
+      const response = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: process.env.TAVILY_API_KEY,
+          query,
+          search_depth: 'advanced',
+          max_results: 8,
+          include_answer: true,
+          include_raw_content: false,
+        }),
+      })
+      
+      if (response.ok) {
+        const data: TavilyResponse = await response.json()
+        if (data.results && data.results.length > 0) {
+          return { results: data.results }
+        }
+      }
+    } catch {
+      // Fall through to DuckDuckGo
+    }
   }
   
-  try {
-    const response = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        api_key: process.env.TAVILY_API_KEY,
-        query,
-        search_depth: 'advanced',
-        max_results: 8,
-        include_answer: true,
-        include_raw_content: false,
-      }),
-    })
-    
-    if (!response.ok) {
-      return { results: [], error: 'Search failed' }
-    }
-    
-    const data: TavilyResponse = await response.json()
-    return { results: data.results || [] }
-  } catch {
-    return { results: [], error: 'Search error' }
+  // Fallback to DuckDuckGo
+  const ddgResults = await searchDuckDuckGo(query)
+  if (ddgResults.length > 0) {
+    return { results: ddgResults }
   }
+  
+  return { results: [], error: 'Search failed' }
 }
 
 const SYSTEM_PROMPT = `Ты — Zenith Sync 3.0, продвинутый AI ассистент нового поколения.
