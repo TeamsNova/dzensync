@@ -252,7 +252,7 @@ export default function Home() {
       }
     }, 100)
     return () => clearTimeout(timer)
-  }, [chats, currentChatId, sidebarOpen, mode, openMenuId, codePreview])
+  }, [chats, currentChatId, sidebarOpen, mode, openMenuId, codePreview, input])
 
   useEffect(() => {
     const handleClick = () => setOpenMenuId(null)
@@ -1064,11 +1064,11 @@ export default function Home() {
               disabled={isLoading || isListening}
             />
             {input.trim() ? (
-              <button className="send-btn" onClick={sendMessage} disabled={isLoading}>
+              <button key="send" className="send-btn" onClick={sendMessage} disabled={isLoading}>
                 <i data-lucide="send" style={{width: 18, height: 18}}></i>
               </button>
             ) : (
-              <button className={`mic-btn ${isListening ? 'listening' : ''}`} onClick={isListening ? stopListening : startListening} disabled={isLoading}>
+              <button key="mic" className={`mic-btn ${isListening ? 'listening' : ''}`} onClick={isListening ? stopListening : startListening} disabled={isLoading}>
                 <i data-lucide={isListening ? "mic-off" : "mic"} style={{width: 18, height: 18}}></i>
               </button>
             )}
