@@ -59,50 +59,59 @@ export default function Home() {
   }
 
   return (
-    <div className="container">
-      <header className="header">
-        <h1>Zenith Sync 3.0</h1>
-        <p>AI Assistant</p>
-      </header>
-
-      <div className="chat-container" ref={chatRef}>
-        {messages.length === 0 && (
-          <div className="welcome">
-            <h2>Привет!</h2>
-            <p>Я Zenith Sync — твой AI помощник. Спрашивай что угодно!</p>
-          </div>
-        )}
-
-        {messages.map((msg, i) => (
-          <div key={i} className={`message ${msg.role}`}>
-            {msg.content}
-          </div>
-        ))}
-
-        {isLoading && (
-          <div className="typing">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-        )}
+    <>
+      {/* Background Effects */}
+      <div className="bg-effects">
+        <div className="grid-bg"></div>
+        <div className="glow-orb glow-orb-1"></div>
+        <div className="glow-orb glow-orb-2"></div>
       </div>
 
-      <div className="input-container">
-        <div className="input-wrapper">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Напиши сообщение..."
-            disabled={isLoading}
-          />
-          <button onClick={sendMessage} disabled={isLoading || !input.trim()}>
-            Отправить
-          </button>
+      <div className="container">
+        <header className="header">
+          <h1>✨ Zenith Sync 3.0</h1>
+          <p>AI Assistant powered by Groq</p>
+        </header>
+
+        <div className="chat-container" ref={chatRef}>
+          {messages.length === 0 && (
+            <div className="welcome">
+              <h2>Привет! 👋</h2>
+              <p>Я Zenith Sync — твой AI помощник. Спрашивай что угодно, отвечу моментально!</p>
+            </div>
+          )}
+
+          {messages.map((msg, i) => (
+            <div key={i} className={`message ${msg.role}`}>
+              {msg.content}
+            </div>
+          ))}
+
+          {isLoading && (
+            <div className="typing">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+          )}
+        </div>
+
+        <div className="input-container">
+          <div className="input-wrapper">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Напиши сообщение..."
+              disabled={isLoading}
+            />
+            <button onClick={sendMessage} disabled={isLoading || !input.trim()}>
+              Отправить
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
