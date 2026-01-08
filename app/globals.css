@@ -305,6 +305,20 @@ body {
   animation: msgIn 0.25s ease-out;
 }
 
+.message-wrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.message-wrapper.user {
+  justify-content: flex-end;
+}
+
+.message-wrapper.assistant {
+  justify-content: flex-start;
+}
+
 @keyframes msgIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -387,28 +401,24 @@ body {
 }
 
 /* Message Actions Menu */
-.message.assistant {
-  position: relative;
-}
-
 .message-actions {
-  position: absolute;
-  top: 8px;
-  right: 8px;
   opacity: 0;
   transition: opacity 0.15s;
+  flex-shrink: 0;
+  align-self: flex-start;
+  margin-top: 4px;
 }
 
-.message.assistant:hover .message-actions {
+.message-wrapper:hover .message-actions {
   opacity: 1;
 }
 
 .message-menu-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -418,7 +428,7 @@ body {
 }
 
 .message-menu-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(59, 130, 246, 0.2);
   color: var(--text);
 }
 
@@ -458,6 +468,10 @@ body {
 
 .message-menu button i {
   color: var(--muted);
+}
+
+.message-actions-wrapper {
+  position: relative;
 }
 
 @keyframes typing {
