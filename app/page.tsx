@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from 'react'
 interface Message {
   role: 'user' | 'assistant' | 'error'
   content: string
+  mode?: 'normal' | 'thinking' | 'search'
 }
 
 interface Chat {
@@ -13,12 +14,15 @@ interface Chat {
   messages: Message[]
 }
 
+type Mode = 'normal' | 'thinking' | 'search'
+
 export default function Home() {
   const [chats, setChats] = useState<Chat[]>([])
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [mode, setMode] = useState<Mode>('normal')
   const chatRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -41,6 +45,16 @@ export default function Home() {
       chatRef.current.scrollTop = chatRef.current.scrollHeight
     }
   }, [chats, currentChatId, isLoading])
+
+  // Init Lucide icons
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (typeof window !== 'undefined' && (window as any).lucide) {
+        (window as any).lucide.createIcons()
+      }
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [chats, currentChatId, sidebarOpen, mode])
 
   const currentChat = chats.find(c => c.id === currentChatId)
   const messages = currentChat?.messages || []
@@ -95,7 +109,7 @@ export default function Home() {
         const isFirst = chat.messages.length === 0
         return {
           ...chat,
-          messages: [...chat.messages, { role: 'user' as const, content: userMessage }],
+          messages: [...chat.messages, { role: 'user' as const, content: userMessage, mode }],
           title: isFirst ? userMessage.slice(0, 30) + (userMessage.length > 30 ? '...' : '') : chat.title
         }
       }
@@ -111,7 +125,8 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           message: userMessage,
-          history: [...chatMessages, { role: 'user', content: userMessage }].filter(m => m.role !== 'error').slice(-10)
+          history: [...chatMessages, { role: 'user', content: userMessage }].filter(m => m.role !== 'error').slice(-10),
+          mode
         }),
       })
 
@@ -123,7 +138,8 @@ export default function Home() {
             ...chat,
             messages: [...chat.messages, { 
               role: data.error ? 'error' : 'assistant', 
-              content: data.error || data.response 
+              content: data.error || data.response,
+              mode
             }]
           }
         }
@@ -163,11 +179,14 @@ export default function Home() {
       <aside className={`sidebar ${!sidebarOpen ? 'hidden' : ''}`}>
         <div className="sidebar-header">
           <h2>Чаты</h2>
-          <button className="close-sidebar-btn" onClick={() => setSidebarOpen(false)}>✕</button>
+          <button className="close-sidebar-btn" onClick={() => setSidebarOpen(false)}>
+            <i data-lucide="x" style={{width: 18, height: 18}}></i>
+          </button>
         </div>
         
         <button className="new-chat-btn" onClick={createNewChat}>
-          + Новый чат
+          <i data-lucide="plus" style={{width: 18, height: 18}}></i>
+          Новый чат
         </button>
 
         <div className="chat-list">
@@ -177,12 +196,13 @@ export default function Home() {
               className={`chat-item ${chat.id === currentChatId ? 'active' : ''}`}
               onClick={() => setCurrentChatId(chat.id)}
             >
+              <i data-lucide="message-square" style={{width: 16, height: 16, opacity: 0.5}}></i>
               <span className="chat-title">{chat.title}</span>
               <button 
                 className="delete-btn"
                 onClick={(e) => { e.stopPropagation(); deleteChat(chat.id) }}
               >
-                ✕
+                <i data-lucide="trash-2" style={{width: 14, height: 14}}></i>
               </button>
             </div>
           ))}
@@ -193,6 +213,7 @@ export default function Home() {
 
         {chats.length > 0 && (
           <button className="clear-all-btn" onClick={clearAllChats}>
+            <i data-lucide="trash" style={{width: 14, height: 14}}></i>
             Очистить всё
           </button>
         )}
@@ -203,31 +224,88 @@ export default function Home() {
         {/* Top Bar */}
         <div className="topbar">
           <button className="toggle-sidebar-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>
-            ☰
+            <i data-lucide={sidebarOpen ? "panel-left-close" : "panel-left-open"} style={{width: 20, height: 20}}></i>
           </button>
           <span className="topbar-title">Zenith Sync</span>
+          
+          {/* Mode Selector */}
+          <div className="mode-selector">
+            <button 
+              className={`mode-btn ${mode === 'normal' ? 'active' : ''}`}
+              onClick={() => setMode('normal')}
+              title="Обычный режим"
+            >
+              <i data-lucide="message-circle" style={{width: 18, height: 18}}></i>
+            </button>
+            <button 
+              className={`mode-btn ${mode === 'thinking' ? 'active' : ''}`}
+              onClick={() => setMode('thinking')}
+              title="Режим размышления"
+            >
+              <i data-lucide="brain" style={{width: 18, height: 18}}></i>
+            </button>
+            <button 
+              className={`mode-btn ${mode === 'search' ? 'active' : ''}`}
+              onClick={() => setMode('search')}
+              title="Режим поиска"
+            >
+              <i data-lucide="search" style={{width: 18, height: 18}}></i>
+            </button>
+          </div>
         </div>
 
         {/* Chat Area */}
         <div className="chat-area" ref={chatRef}>
           {messages.length === 0 ? (
             <div className="welcome">
+              <div className="welcome-icon">
+                <i data-lucide="sparkles" style={{width: 32, height: 32}}></i>
+              </div>
               <h2>Чем могу помочь?</h2>
               <p>Задайте любой вопрос — помогу с кодом, текстом, анализом и многим другим.</p>
+              
+              <div className="mode-info">
+                <div className="mode-card">
+                  <i data-lucide="message-circle" style={{width: 20, height: 20}}></i>
+                  <span>Обычный</span>
+                </div>
+                <div className="mode-card">
+                  <i data-lucide="brain" style={{width: 20, height: 20}}></i>
+                  <span>Thinking</span>
+                </div>
+                <div className="mode-card">
+                  <i data-lucide="search" style={{width: 20, height: 20}}></i>
+                  <span>Search</span>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="messages">
               {messages.map((msg, i) => (
                 <div key={i} className={`message ${msg.role}`}>
+                  {msg.mode && msg.mode !== 'normal' && msg.role === 'assistant' && (
+                    <div className="message-mode">
+                      <i data-lucide={msg.mode === 'thinking' ? 'brain' : 'search'} style={{width: 12, height: 12}}></i>
+                      {msg.mode === 'thinking' ? 'Thinking' : 'Search'}
+                    </div>
+                  )}
                   {msg.content}
                 </div>
               ))}
 
               {isLoading && (
                 <div className="typing">
-                  <span />
-                  <span />
-                  <span />
+                  {mode !== 'normal' && (
+                    <div className="typing-mode">
+                      <i data-lucide={mode === 'thinking' ? 'brain' : 'search'} style={{width: 14, height: 14}}></i>
+                      {mode === 'thinking' ? 'Думаю...' : 'Ищу...'}
+                    </div>
+                  )}
+                  <div className="typing-dots">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
                 </div>
               )}
             </div>
@@ -242,7 +320,11 @@ export default function Home() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Напишите сообщение..."
+              placeholder={
+                mode === 'thinking' ? 'Задайте вопрос для анализа...' :
+                mode === 'search' ? 'Что найти?' :
+                'Напишите сообщение...'
+              }
               disabled={isLoading}
             />
             <button 
@@ -250,7 +332,7 @@ export default function Home() {
               onClick={sendMessage} 
               disabled={isLoading || !input.trim()}
             >
-              Отправить
+              <i data-lucide="send" style={{width: 18, height: 18}}></i>
             </button>
           </div>
         </div>
