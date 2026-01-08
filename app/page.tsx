@@ -11,7 +11,6 @@ interface Chat {
   id: string
   title: string
   messages: Message[]
-  createdAt: number
 }
 
 export default function Home() {
@@ -19,34 +18,36 @@ export default function Home() {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Load chats from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('zenith-chats')
     if (saved) {
       const parsed = JSON.parse(saved)
       setChats(parsed)
-      if (parsed.length > 0) {
-        setCurrentChatId(parsed[0].id)
-      }
+      if (parsed.length > 0) setCurrentChatId(parsed[0].id)
     }
   }, [])
 
-  // Save chats to localStorage
   useEffect(() => {
     if (chats.length > 0) {
       localStorage.setItem('zenith-chats', JSON.stringify(chats))
     }
   }, [chats])
 
-  // Auto scroll
   useEffect(() => {
     if (chatRef.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight
     }
   }, [chats, currentChatId, isLoading])
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 150) + 'px'
+    }
+  }, [input])
 
   const currentChat = chats.find(c => c.id === currentChatId)
   const messages = currentChat?.messages || []
@@ -55,26 +56,22 @@ export default function Home() {
     const newChat: Chat = {
       id: Date.now().toString(),
       title: 'Новый чат',
-      messages: [],
-      createdAt: Date.now()
+      messages: []
     }
     setChats(prev => [newChat, ...prev])
     setCurrentChatId(newChat.id)
-    setSidebarOpen(false)
   }
 
-  const deleteChat = (id: string) => {
-    setChats(prev => prev.filter(c => c.id !== id))
+  const closeChat = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const newChats = chats.filter(c => c.id !== id)
+    setChats(newChats)
     if (currentChatId === id) {
-      const remaining = chats.filter(c => c.id !== id)
-      setCurrentChatId(remaining.length > 0 ? remaining[0].id : null)
+      setCurrentChatId(newChats.length > 0 ? newChats[0].id : null)
     }
-  }
-
-  const clearAllChats = () => {
-    setChats([])
-    setCurrentChatId(null)
-    localStorage.removeItem('zenith-chats')
+    if (newChats.length === 0) {
+      localStorage.removeItem('zenith-chats')
+    }
   }
 
   const sendMessage = async () => {
@@ -83,28 +80,25 @@ export default function Home() {
     const userMessage = input.trim()
     setInput('')
 
-    // Create new chat if none exists
     let chatId = currentChatId
     if (!chatId) {
       const newChat: Chat = {
         id: Date.now().toString(),
-        title: userMessage.slice(0, 30) + (userMessage.length > 30 ? '...' : ''),
-        messages: [],
-        createdAt: Date.now()
+        title: userMessage.slice(0, 25) + (userMessage.length > 25 ? '...' : ''),
+        messages: []
       }
       setChats(prev => [newChat, ...prev])
       chatId = newChat.id
       setCurrentChatId(chatId)
     }
 
-    // Add user message
     setChats(prev => prev.map(chat => {
       if (chat.id === chatId) {
-        const newMessages = [...chat.messages, { role: 'user' as const, content: userMessage }]
+        const isFirst = chat.messages.length === 0
         return {
           ...chat,
-          messages: newMessages,
-          title: chat.messages.length === 0 ? userMessage.slice(0, 30) + (userMessage.length > 30 ? '...' : '') : chat.title
+          messages: [...chat.messages, { role: 'user' as const, content: userMessage }],
+          title: isFirst ? userMessage.slice(0, 25) + (userMessage.length > 25 ? '...' : '') : chat.title
         }
       }
       return chat
@@ -152,7 +146,7 @@ export default function Home() {
     }
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       sendMessage()
@@ -161,105 +155,81 @@ export default function Home() {
 
   return (
     <>
-      {/* Background */}
       <div className="bg-effects">
         <div className="orb orb-1" />
         <div className="orb orb-2" />
-        <div className="orb orb-3" />
-        <div className="grid-bg" />
       </div>
 
-      {/* Sidebar Overlay */}
-      {sidebarOpen && (
-        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
-      )}
-
-      {/* Sidebar */}
-      <aside className={`sidebar glass ${sidebarOpen ? 'open' : ''}`}>
-        <div className="sidebar-header">
-          <h2>💬 Чаты</h2>
-          <button className="icon-btn" onClick={() => setSidebarOpen(false)}>✕</button>
-        </div>
-        
-        <button className="new-chat-btn" onClick={createNewChat}>
-          <span>+</span> Новый чат
-        </button>
-
-        <div className="chat-list">
-          {chats.map(chat => (
-            <div 
-              key={chat.id} 
-              className={`chat-item ${chat.id === currentChatId ? 'active' : ''}`}
-              onClick={() => { setCurrentChatId(chat.id); setSidebarOpen(false) }}
-            >
-              <span className="chat-title">{chat.title}</span>
-              <button 
-                className="delete-btn"
-                onClick={(e) => { e.stopPropagation(); deleteChat(chat.id) }}
+      <div className="app">
+        {/* Top Bar with Tabs */}
+        <div className="topbar">
+          <div className="tabs">
+            {chats.map(chat => (
+              <button
+                key={chat.id}
+                className={`tab ${chat.id === currentChatId ? 'active' : ''}`}
+                onClick={() => setCurrentChatId(chat.id)}
               >
-                🗑
+                <span className="tab-title">{chat.title}</span>
+                <span className="tab-close" onClick={(e) => closeChat(chat.id, e)}>×</span>
+              </button>
+            ))}
+          </div>
+          <button className="new-tab-btn" onClick={createNewChat} title="Новый чат">+</button>
+        </div>
+
+        {/* Main */}
+        <div className="main">
+          <div className="chat-area" ref={chatRef}>
+            {messages.length === 0 ? (
+              <div className="welcome">
+                <div className="welcome-icon">⚡</div>
+                <h2>Чем могу помочь?</h2>
+                <p>Задайте вопрос, и я постараюсь дать полезный ответ. Поддерживаю код, анализ, генерацию текста и многое другое.</p>
+              </div>
+            ) : (
+              messages.map((msg, i) => (
+                <div key={i} className={`message ${msg.role}`}>
+                  <div className="message-avatar">
+                    {msg.role === 'user' ? '👤' : '⚡'}
+                  </div>
+                  <div className="message-content">{msg.content}</div>
+                </div>
+              ))
+            )}
+
+            {isLoading && (
+              <div className="typing">
+                <div className="message-avatar">⚡</div>
+                <div className="typing-dots">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Input */}
+          <div className="input-area">
+            <div className="input-box">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Напишите сообщение..."
+                disabled={isLoading}
+                rows={1}
+              />
+              <button 
+                className="send-btn" 
+                onClick={sendMessage} 
+                disabled={isLoading || !input.trim()}
+              >
+                ↑
               </button>
             </div>
-          ))}
-          {chats.length === 0 && (
-            <p className="no-chats">Нет чатов</p>
-          )}
-        </div>
-
-        {chats.length > 0 && (
-          <button className="clear-all-btn" onClick={clearAllChats}>
-            Очистить всё
-          </button>
-        )}
-      </aside>
-
-      {/* Main */}
-      <div className="container">
-        <header className="header glass">
-          <button className="menu-btn" onClick={() => setSidebarOpen(true)}>☰</button>
-          <div className="header-center">
-            <h1>⚡ Zenith Sync 3.0</h1>
-            <p>AI Assistant • Groq</p>
-          </div>
-          <button className="icon-btn" onClick={createNewChat}>+</button>
-        </header>
-
-        <div className="chat-container glass" ref={chatRef}>
-          {messages.length === 0 ? (
-            <div className="welcome">
-              <h2>Привет! 👋</h2>
-              <p>Я Zenith — твой AI ассистент. Задай любой вопрос и получи мгновенный ответ.</p>
-            </div>
-          ) : (
-            messages.map((msg, i) => (
-              <div key={i} className={`message ${msg.role}`}>
-                {msg.content}
-              </div>
-            ))
-          )}
-
-          {isLoading && (
-            <div className="typing">
-              <span />
-              <span />
-              <span />
-            </div>
-          )}
-        </div>
-
-        <div className="input-container glass">
-          <div className="input-wrapper">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyPress}
-              placeholder="Напиши сообщение..."
-              disabled={isLoading}
-            />
-            <button onClick={sendMessage} disabled={isLoading || !input.trim()}>
-              Отправить
-            </button>
           </div>
         </div>
       </div>
