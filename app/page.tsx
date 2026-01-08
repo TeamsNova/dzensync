@@ -490,6 +490,10 @@ export default function Home() {
         }
       }
 
+      // Clear streaming BEFORE adding to messages to prevent duplication
+      setStreamingContent('')
+      setStreamingSources([])
+
       setChats(prev => prev.map(chat => {
         if (chat.id === chatId) {
           return {
@@ -519,8 +523,6 @@ export default function Home() {
       }))
     } finally {
       setIsLoading(false)
-      setStreamingContent('')
-      setStreamingSources([])
     }
   }
 

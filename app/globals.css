@@ -1675,9 +1675,17 @@ body {
     font-size: 0.75rem;
   }
   
-  /* Input Area */
+  /* Input Area - extra padding for iPhone Safari bottom bar */
   .input-area { 
-    padding: 10px 12px 16px; 
+    padding: 10px 12px calc(24px + env(safe-area-inset-bottom, 0px)); 
+    padding-bottom: max(24px, env(safe-area-inset-bottom, 24px));
+  }
+  
+  /* Extra safe area for iOS Safari */
+  @supports (-webkit-touch-callout: none) {
+    .input-area {
+      padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+    }
   }
   
   .input-box {
@@ -1915,4 +1923,34 @@ input:focus-visible {
 
 .messages .message-wrapper:not(:last-child) {
   animation: none;
+}
+
+/* ==================== iOS SAFARI FIXES ==================== */
+/* Safe area for iPhone notch and home indicator */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .app {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .main {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* iOS Safari specific - detect Safari on iOS */
+@supports (-webkit-touch-callout: none) {
+  /* Extra bottom padding for Safari URL bar */
+  .input-area {
+    padding-bottom: calc(30px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  
+  /* Prevent iOS bounce scroll issues */
+  .chat-area {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Fix for iOS keyboard */
+  .input-box input {
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
 }
