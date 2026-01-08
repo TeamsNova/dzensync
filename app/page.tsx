@@ -271,54 +271,76 @@ export default function Home() {
 
   // Message content with custom code parsing
   const MessageContent = ({ content, onOpenCode, onCopyCode }: { content: string; onOpenCode: (code: string, lang: string) => void; onCopyCode: (code: string) => void }) => {
-    // Parse code blocks: ```lang code ``` or ``` code ```
-    // Support both regular backticks and various unicode variants
-    const parts: { type: 'text' | 'code'; content: string; language?: string }[] = []
+    // Try multiple regex patterns to catch code blocks
+    const patterns = [
+      /```(\w*)\n([\s\S]*?)```/g,           // Standard: ```python\ncode```
+      /```(\w*)\s+([\s\S]*?)```/g,          // With space: ```python code```
+      /`{3}(\w*)\s*([\s\S]*?)`{3}/g,        // Generic backticks
+    ]
     
-    // Match ``` with optional language, then content, then closing ```
-    // Also handle cases where there's no newline after opening ```
-    const codeBlockRegex = /`{3}(\w*)\s*([\s\S]*?)`{3}/g
-    let lastIndex = 0
-    let match
-
-    while ((match = codeBlockRegex.exec(content)) !== null) {
-      // Add text before code block
-      if (match.index > lastIndex) {
-        parts.push({ type: 'text', content: content.slice(lastIndex, match.index) })
-      }
-      // Add code block
-      parts.push({ type: 'code', content: match[2].trim(), language: match[1] || '' })
-      lastIndex = match.index + match[0].length
-    }
+    let parts: { type: 'text' | 'code'; content: string; language?: string }[] = []
+    let foundMatch = false
     
-    // Add remaining text
-    if (lastIndex < content.length) {
-      parts.push({ type: 'text', content: content.slice(lastIndex) })
-    }
-
-    // If no code blocks found, render everything as text
-    if (parts.length === 0 || (parts.length === 1 && parts[0].type === 'text' && parts[0].content === content)) {
-      // Check if content looks like code (has def, function, class, etc.)
-      const looksLikeCode = /^(def |function |class |import |from |const |let |var |#include)/.test(content.trim())
-      if (looksLikeCode && content.length > 100) {
-        return (
-          <div className="code-block">
-            <div className="code-header">
-              <span className="code-lang">code</span>
-              <div className="code-actions">
-                <button onClick={() => onCopyCode(content)} title="Копировать">
-                  <i data-lucide="copy" style={{width: 14, height: 14}}></i>
-                </button>
-                <button onClick={() => onOpenCode(content, '')} title="Открыть">
-                  <i data-lucide="maximize-2" style={{width: 14, height: 14}}></i>
-                </button>
-              </div>
-            </div>
-            <pre><code>{content}</code></pre>
-          </div>
-        )
+    for (const regex of patterns) {
+      if (foundMatch) break
+      
+      const tempParts: typeof parts = []
+      let lastIndex = 0
+      let match
+      regex.lastIndex = 0 // Reset regex
+      
+      while ((match = regex.exec(content)) !== null) {
+        foundMatch = true
+        if (match.index > lastIndex) {
+          tempParts.push({ type: 'text', content: content.slice(lastIndex, match.index) })
+        }
+        tempParts.push({ type: 'code', content: match[2].trim(), language: match[1] || '' })
+        lastIndex = match.index + match[0].length
       }
       
+      if (foundMatch) {
+        if (lastIndex < content.length) {
+          tempParts.push({ type: 'text', content: content.slice(lastIndex) })
+        }
+        parts = tempParts
+      }
+    }
+
+    // If still no code blocks found, check for code-like content
+    if (!foundMatch) {
+      // Look for lines that look like code
+      const lines = content.split('\n')
+      const codeIndicators = ['def ', 'function ', 'class ', 'import ', 'from ', 'const ', 'let ', 'var ', 'if ', 'for ', 'while ', 'return ', 'print(', 'console.']
+      const hasCodeLines = lines.some(line => codeIndicators.some(ind => line.trim().startsWith(ind)))
+      
+      if (hasCodeLines && lines.length > 3) {
+        // Find where code starts and ends
+        let codeStart = -1
+        let codeEnd = -1
+        
+        for (let i = 0; i < lines.length; i++) {
+          const isCodeLine = codeIndicators.some(ind => lines[i].trim().startsWith(ind)) || 
+                            /^\s{2,}/.test(lines[i]) || // Indented line
+                            /^[\s]*[{}()\[\];]/.test(lines[i]) // Brackets
+          if (isCodeLine && codeStart === -1) codeStart = i
+          if (isCodeLine) codeEnd = i
+        }
+        
+        if (codeStart !== -1) {
+          const beforeCode = lines.slice(0, codeStart).join('\n').trim()
+          const codeContent = lines.slice(codeStart, codeEnd + 1).join('\n')
+          const afterCode = lines.slice(codeEnd + 1).join('\n').trim()
+          
+          if (beforeCode) parts.push({ type: 'text', content: beforeCode })
+          parts.push({ type: 'code', content: codeContent, language: '' })
+          if (afterCode) parts.push({ type: 'text', content: afterCode })
+          foundMatch = true
+        }
+      }
+    }
+
+    // Final fallback - just render as markdown
+    if (!foundMatch || parts.length === 0) {
       return (
         <ReactMarkdown
           components={{
@@ -361,7 +383,6 @@ export default function Home() {
               </div>
             )
           }
-          // Render text with basic markdown
           return (
             <ReactMarkdown
               key={idx}
