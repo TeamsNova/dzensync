@@ -10,8 +10,13 @@ export default function LucideLoader() {
       onLoad={() => {
         if (typeof window !== 'undefined' && (window as any).lucide) {
           (window as any).lucide.createIcons();
+          
+          let timeout: NodeJS.Timeout | null = null;
           const observer = new MutationObserver(() => {
-            (window as any).lucide.createIcons();
+            if (timeout) clearTimeout(timeout);
+            timeout = setTimeout(() => {
+              (window as any).lucide?.createIcons();
+            }, 100);
           });
           observer.observe(document.body, { childList: true, subtree: true });
         }
