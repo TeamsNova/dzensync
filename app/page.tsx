@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
 
 interface Message {
   role: 'user' | 'assistant' | 'error'
@@ -14,6 +15,11 @@ interface Chat {
   messages: Message[]
 }
 
+interface CodePreview {
+  code: string
+  language: string
+}
+
 type Mode = 'normal' | 'thinking' | 'search'
 
 export default function Home() {
@@ -25,7 +31,10 @@ export default function Home() {
   const [mode, setMode] = useState<Mode>('normal')
   const [openMenuId, setOpenMenuId] = useState<number | null>(null)
   const [speakingId, setSpeakingId] = useState<number | null>(null)
+  const [isListening, setIsListening] = useState(false)
+  const [codePreview, setCodePreview] = useState<CodePreview | null>(null)
   const chatRef = useRef<HTMLDivElement>(null)
+  const recognitionRef = useRef<any>(null)
 
   useEffect(() => {
     const saved = localStorage.getItem('zenith-chats')
@@ -48,7 +57,6 @@ export default function Home() {
     }
   }, [chats, currentChatId, isLoading])
 
-  // Init Lucide icons
   useEffect(() => {
     const timer = setTimeout(() => {
       if (typeof window !== 'undefined' && (window as any).lucide) {
@@ -56,9 +64,8 @@ export default function Home() {
       }
     }, 100)
     return () => clearTimeout(timer)
-  }, [chats, currentChatId, sidebarOpen, mode, openMenuId])
+  }, [chats, currentChatId, sidebarOpen, mode, openMenuId, codePreview])
 
-  // Close menu on click outside
   useEffect(() => {
     const handleClick = () => setOpenMenuId(null)
     if (openMenuId !== null) {
@@ -97,48 +104,56 @@ export default function Home() {
     localStorage.removeItem('zenith-chats')
   }
 
-  // Stop any playing audio
+  const startListening = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert('Ваш браузер не поддерживает голосовой ввод')
+      return
+    }
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'ru-RU'
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.onstart = () => setIsListening(true)
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript
+      setInput(prev => prev + (prev ? ' ' : '') + transcript)
+      setIsListening(false)
+    }
+    recognition.onerror = () => setIsListening(false)
+    recognition.onend = () => setIsListening(false)
+    recognitionRef.current = recognition
+    recognition.start()
+  }
+
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+      setIsListening(false)
+    }
+  }
+
   const stopSpeaking = () => {
-    // Stop HTML audio
     const audio = document.getElementById('tts-audio') as HTMLAudioElement
-    if (audio) {
-      audio.pause()
-      audio.currentTime = 0
-    }
-    // Stop browser TTS
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel()
-    }
+    if (audio) { audio.pause(); audio.currentTime = 0 }
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel()
     setSpeakingId(null)
   }
 
   const speakText = async (text: string, index: number) => {
-    // Stop if already speaking this message
-    if (speakingId === index) {
-      stopSpeaking()
-      return
-    }
-
-    // Stop any previous audio first
+    if (speakingId === index) { stopSpeaking(); return }
     stopSpeaking()
-    
     setSpeakingId(index)
     setOpenMenuId(null)
-
-    // Use browser TTS (works everywhere, free)
     if ('speechSynthesis' in window) {
       const utterance = new SpeechSynthesisUtterance(text)
       utterance.lang = 'ru-RU'
       utterance.rate = 1
-      
-      // Try to find Russian voice
       const voices = window.speechSynthesis.getVoices()
       const ruVoice = voices.find(v => v.lang.startsWith('ru'))
       if (ruVoice) utterance.voice = ruVoice
-      
       utterance.onend = () => setSpeakingId(null)
       utterance.onerror = () => setSpeakingId(null)
-      
       window.speechSynthesis.speak(utterance)
     } else {
       setSpeakingId(null)
@@ -150,9 +165,16 @@ export default function Home() {
     setOpenMenuId(null)
   }
 
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code)
+  }
+
+  const openCodePreview = (code: string, language: string) => {
+    setCodePreview({ code, language })
+  }
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return
-
     const userMessage = input.trim()
     setInput('')
 
@@ -193,9 +215,7 @@ export default function Home() {
           mode
         }),
       })
-
       const data = await response.json()
-
       setChats(prev => prev.map(chat => {
         if (chat.id === chatId) {
           return {
@@ -231,15 +251,30 @@ export default function Home() {
     }
   }
 
-  return (
-    <div className="app">
-      {/* Sidebar Overlay (Mobile) */}
-      <div 
-        className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} 
-        onClick={() => setSidebarOpen(false)} 
-      />
+  // Custom code block component
+  const CodeBlock = ({ language, children }: { language: string; children: string }) => (
+    <div className="code-block">
+      <div className="code-header">
+        <span className="code-lang">{language || 'code'}</span>
+        <div className="code-actions">
+          <button onClick={() => copyCode(children)} title="Копировать">
+            <i data-lucide="copy" style={{width: 14, height: 14}}></i>
+          </button>
+          <button onClick={() => openCodePreview(children, language)} title="Открыть">
+            <i data-lucide="maximize-2" style={{width: 14, height: 14}}></i>
+          </button>
+        </div>
+      </div>
+      <pre><code>{children}</code></pre>
+    </div>
+  )
 
-      {/* Sidebar - Left */}
+  return (
+    <div className={`app ${codePreview ? 'with-preview' : ''}`}>
+      {/* Sidebar Overlay */}
+      <div className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)} />
+
+      {/* Sidebar */}
       <aside className={`sidebar ${!sidebarOpen ? 'hidden' : ''}`}>
         <div className="sidebar-header">
           <h2>Чаты</h2>
@@ -247,34 +282,22 @@ export default function Home() {
             <i data-lucide="x" style={{width: 18, height: 18}}></i>
           </button>
         </div>
-        
         <button className="new-chat-btn" onClick={createNewChat}>
           <i data-lucide="plus" style={{width: 18, height: 18}}></i>
           Новый чат
         </button>
-
         <div className="chat-list">
           {chats.map(chat => (
-            <div 
-              key={chat.id} 
-              className={`chat-item ${chat.id === currentChatId ? 'active' : ''}`}
-              onClick={() => setCurrentChatId(chat.id)}
-            >
+            <div key={chat.id} className={`chat-item ${chat.id === currentChatId ? 'active' : ''}`} onClick={() => setCurrentChatId(chat.id)}>
               <i data-lucide="message-square" style={{width: 16, height: 16, opacity: 0.5}}></i>
               <span className="chat-title">{chat.title}</span>
-              <button 
-                className="delete-btn"
-                onClick={(e) => { e.stopPropagation(); deleteChat(chat.id) }}
-              >
+              <button className="delete-btn" onClick={(e) => { e.stopPropagation(); deleteChat(chat.id) }}>
                 <i data-lucide="trash-2" style={{width: 14, height: 14}}></i>
               </button>
             </div>
           ))}
-          {chats.length === 0 && (
-            <p className="no-chats">Нет чатов</p>
-          )}
+          {chats.length === 0 && <p className="no-chats">Нет чатов</p>}
         </div>
-
         {chats.length > 0 && (
           <button className="clear-all-btn" onClick={clearAllChats}>
             <i data-lucide="trash" style={{width: 14, height: 14}}></i>
@@ -285,40 +308,24 @@ export default function Home() {
 
       {/* Main Content */}
       <div className="main">
-        {/* Top Bar */}
         <div className="topbar">
           <button className="toggle-sidebar-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>
             <i data-lucide={sidebarOpen ? "panel-left-close" : "panel-left-open"} style={{width: 20, height: 20}}></i>
           </button>
           <span className="topbar-title">Zenith Sync</span>
-          
-          {/* Mode Selector */}
           <div className="mode-selector">
-            <button 
-              className={`mode-btn ${mode === 'normal' ? 'active' : ''}`}
-              onClick={() => setMode('normal')}
-              title="Обычный режим"
-            >
+            <button className={`mode-btn ${mode === 'normal' ? 'active' : ''}`} onClick={() => setMode('normal')} title="Обычный режим">
               <i data-lucide="message-circle" style={{width: 18, height: 18}}></i>
             </button>
-            <button 
-              className={`mode-btn ${mode === 'thinking' ? 'active' : ''}`}
-              onClick={() => setMode('thinking')}
-              title="Режим размышления"
-            >
+            <button className={`mode-btn ${mode === 'thinking' ? 'active' : ''}`} onClick={() => setMode('thinking')} title="Режим размышления">
               <i data-lucide="brain" style={{width: 18, height: 18}}></i>
             </button>
-            <button 
-              className={`mode-btn ${mode === 'search' ? 'active' : ''}`}
-              onClick={() => setMode('search')}
-              title="Режим поиска"
-            >
+            <button className={`mode-btn ${mode === 'search' ? 'active' : ''}`} onClick={() => setMode('search')} title="Режим поиска">
               <i data-lucide="search" style={{width: 18, height: 18}}></i>
             </button>
           </div>
         </div>
 
-        {/* Chat Area */}
         <div className="chat-area" ref={chatRef}>
           {messages.length === 0 ? (
             <div className="welcome">
@@ -327,20 +334,10 @@ export default function Home() {
               </div>
               <h2>Чем могу помочь?</h2>
               <p>Задайте любой вопрос — помогу с кодом, текстом, анализом и многим другим.</p>
-              
               <div className="mode-info">
-                <div className="mode-card">
-                  <i data-lucide="message-circle" style={{width: 20, height: 20}}></i>
-                  <span>Обычный</span>
-                </div>
-                <div className="mode-card">
-                  <i data-lucide="brain" style={{width: 20, height: 20}}></i>
-                  <span>Thinking</span>
-                </div>
-                <div className="mode-card">
-                  <i data-lucide="search" style={{width: 20, height: 20}}></i>
-                  <span>Search</span>
-                </div>
+                <div className="mode-card"><i data-lucide="message-circle" style={{width: 20, height: 20}}></i><span>Обычный</span></div>
+                <div className="mode-card"><i data-lucide="brain" style={{width: 20, height: 20}}></i><span>Thinking</span></div>
+                <div className="mode-card"><i data-lucide="search" style={{width: 20, height: 20}}></i><span>Search</span></div>
               </div>
             </div>
           ) : (
@@ -354,20 +351,40 @@ export default function Home() {
                         {msg.mode === 'thinking' ? 'Thinking' : 'Search'}
                       </div>
                     )}
-                    <div className="message-text">{msg.content}</div>
+                    <div className="message-text">
+                      {msg.role === 'assistant' ? (
+                        <ReactMarkdown
+                          components={{
+                            code({ className, children, ...props }) {
+                              const match = /language-(\w+)/.exec(className || '')
+                              const codeString = String(children).replace(/\n$/, '')
+                              if (match || codeString.includes('\n')) {
+                                return <CodeBlock language={match?.[1] || ''}>{codeString}</CodeBlock>
+                              }
+                              return <code className="inline-code" {...props}>{children}</code>
+                            },
+                            p({ children }) { return <p>{children}</p> },
+                            strong({ children }) { return <strong>{children}</strong> },
+                            em({ children }) { return <em>{children}</em> },
+                            ul({ children }) { return <ul>{children}</ul> },
+                            ol({ children }) { return <ol>{children}</ol> },
+                            li({ children }) { return <li>{children}</li> },
+                            h1({ children }) { return <h3>{children}</h3> },
+                            h2({ children }) { return <h4>{children}</h4> },
+                            h3({ children }) { return <h5>{children}</h5> },
+                          }}
+                        >
+                          {msg.content}
+                        </ReactMarkdown>
+                      ) : msg.content}
+                    </div>
                   </div>
-                  
-                  {/* Menu for assistant messages */}
                   {msg.role === 'assistant' && (
                     <div className="message-actions">
                       <div className="message-actions-wrapper">
-                        <button 
-                          className="message-menu-btn"
-                          onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === i ? null : i) }}
-                        >
+                        <button className="message-menu-btn" onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === i ? null : i) }}>
                           <i data-lucide="more-vertical" style={{width: 16, height: 16}}></i>
                         </button>
-                        
                         {openMenuId === i && (
                           <div className="message-menu" onClick={(e) => e.stopPropagation()}>
                             <button onClick={() => speakText(msg.content, i)}>
@@ -385,7 +402,6 @@ export default function Home() {
                   )}
                 </div>
               ))}
-
               {isLoading && (
                 <div className="typing">
                   {mode !== 'normal' && (
@@ -394,18 +410,13 @@ export default function Home() {
                       {mode === 'thinking' ? 'Думаю...' : 'Ищу...'}
                     </div>
                   )}
-                  <div className="typing-dots">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
+                  <div className="typing-dots"><span /><span /><span /></div>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        {/* Input */}
         <div className="input-area">
           <div className="input-box">
             <input
@@ -413,23 +424,41 @@ export default function Home() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={
-                mode === 'thinking' ? 'Задайте вопрос для анализа...' :
-                mode === 'search' ? 'Что найти?' :
-                'Напишите сообщение...'
-              }
-              disabled={isLoading}
+              placeholder={isListening ? 'Говорите...' : mode === 'thinking' ? 'Задайте вопрос для анализа...' : mode === 'search' ? 'Что найти?' : 'Напишите сообщение...'}
+              disabled={isLoading || isListening}
             />
-            <button 
-              className="send-btn" 
-              onClick={sendMessage} 
-              disabled={isLoading || !input.trim()}
-            >
-              <i data-lucide="send" style={{width: 18, height: 18}}></i>
-            </button>
+            {input.trim() ? (
+              <button className="send-btn" onClick={sendMessage} disabled={isLoading}>
+                <i data-lucide="send" style={{width: 18, height: 18}}></i>
+              </button>
+            ) : (
+              <button className={`mic-btn ${isListening ? 'listening' : ''}`} onClick={isListening ? stopListening : startListening} disabled={isLoading}>
+                <i data-lucide={isListening ? "mic-off" : "mic"} style={{width: 18, height: 18}}></i>
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Code Preview Panel */}
+      {codePreview && (
+        <div className="code-preview-panel">
+          <div className="code-preview-header">
+            <span className="code-preview-lang">{codePreview.language || 'code'}</span>
+            <div className="code-preview-actions">
+              <button onClick={() => copyCode(codePreview.code)} title="Копировать">
+                <i data-lucide="copy" style={{width: 16, height: 16}}></i>
+              </button>
+              <button onClick={() => setCodePreview(null)} title="Закрыть">
+                <i data-lucide="x" style={{width: 16, height: 16}}></i>
+              </button>
+            </div>
+          </div>
+          <div className="code-preview-content">
+            <pre><code>{codePreview.code}</code></pre>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
