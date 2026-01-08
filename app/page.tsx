@@ -97,62 +97,51 @@ export default function Home() {
     localStorage.removeItem('zenith-chats')
   }
 
+  // Stop any playing audio
+  const stopSpeaking = () => {
+    // Stop HTML audio
+    const audio = document.getElementById('tts-audio') as HTMLAudioElement
+    if (audio) {
+      audio.pause()
+      audio.currentTime = 0
+    }
+    // Stop browser TTS
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+    }
+    setSpeakingId(null)
+  }
+
   const speakText = async (text: string, index: number) => {
-    // Stop if already speaking
+    // Stop if already speaking this message
     if (speakingId === index) {
-      const audio = document.getElementById('tts-audio') as HTMLAudioElement
-      if (audio) {
-        audio.pause()
-        audio.currentTime = 0
-      }
-      setSpeakingId(null)
+      stopSpeaking()
       return
     }
 
+    // Stop any previous audio first
+    stopSpeaking()
+    
     setSpeakingId(index)
     setOpenMenuId(null)
 
-    try {
-      const response = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text.slice(0, 500) })
-      })
-
-      if (!response.ok) throw new Error('TTS failed')
-
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
+    // Use browser TTS (works everywhere, free)
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.lang = 'ru-RU'
+      utterance.rate = 1
       
-      let audio = document.getElementById('tts-audio') as HTMLAudioElement
-      if (!audio) {
-        audio = document.createElement('audio')
-        audio.id = 'tts-audio'
-        document.body.appendChild(audio)
-      }
+      // Try to find Russian voice
+      const voices = window.speechSynthesis.getVoices()
+      const ruVoice = voices.find(v => v.lang.startsWith('ru'))
+      if (ruVoice) utterance.voice = ruVoice
       
-      audio.src = url
-      audio.onended = () => {
-        setSpeakingId(null)
-        URL.revokeObjectURL(url)
-      }
-      audio.onerror = () => {
-        setSpeakingId(null)
-        URL.revokeObjectURL(url)
-      }
-      audio.play()
-    } catch {
-      // Fallback to browser TTS
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel()
-        const utterance = new SpeechSynthesisUtterance(text)
-        utterance.lang = 'ru-RU'
-        utterance.onend = () => setSpeakingId(null)
-        utterance.onerror = () => setSpeakingId(null)
-        window.speechSynthesis.speak(utterance)
-      } else {
-        setSpeakingId(null)
-      }
+      utterance.onend = () => setSpeakingId(null)
+      utterance.onerror = () => setSpeakingId(null)
+      
+      window.speechSynthesis.speak(utterance)
+    } else {
+      setSpeakingId(null)
     }
   }
 
