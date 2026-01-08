@@ -1570,8 +1570,9 @@ body {
 .premium-feature:last-child { border-bottom: none; }
 .premium-feature i { color: var(--accent); }
 
-/* ==================== RESPONSIVE ==================== */
+/* ==================== RESPONSIVE - MOBILE ==================== */
 @media (max-width: 768px) {
+  /* Sidebar */
   .sidebar {
     position: fixed;
     left: 0;
@@ -1579,32 +1580,290 @@ body {
     bottom: 0;
     z-index: 100;
     background: var(--bg2);
+    width: 85%;
+    max-width: 320px;
   }
   
   .sidebar.hidden { transform: translateX(-100%); }
   .sidebar-overlay.show { display: block; }
-  .chat-area { padding: 16px; }
-  .input-area { padding: 12px 16px 20px; }
-  .message { max-width: 88%; }
   
+  /* Topbar */
+  .topbar {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  
+  .toggle-sidebar-btn,
+  .theme-toggle,
+  .settings-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+  }
+  
+  .model-selector-btn {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+  
+  .model-name {
+    font-size: 0.5rem;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .model-menu {
+    min-width: 260px;
+    left: -50px;
+  }
+  
+  .mode-selector { display: none; }
+  
+  /* Chat Area */
+  .chat-area { 
+    padding: 12px; 
+  }
+  
+  .messages {
+    gap: 14px;
+  }
+  
+  .message { 
+    max-width: 90%; 
+    padding: 12px 14px;
+    font-size: 0.9rem;
+    border-radius: 14px;
+  }
+  
+  .message.user {
+    border-bottom-right-radius: 4px;
+  }
+  
+  .message.assistant {
+    border-bottom-left-radius: 4px;
+  }
+  
+  .message-actions {
+    opacity: 1;
+  }
+  
+  .message-menu-btn {
+    width: 30px;
+    height: 30px;
+  }
+  
+  /* Code blocks */
+  .code-block {
+    border-radius: 10px;
+    margin: 10px 0;
+  }
+  
+  .code-header {
+    padding: 8px 12px;
+  }
+  
+  .code-lang {
+    font-size: 0.5rem;
+  }
+  
+  .code-block pre {
+    padding: 12px;
+  }
+  
+  .code-block code {
+    font-size: 0.75rem;
+  }
+  
+  /* Input Area */
+  .input-area { 
+    padding: 10px 12px 16px; 
+  }
+  
+  .input-box {
+    padding: 6px;
+    border-radius: 14px;
+  }
+  
+  .input-box input {
+    padding: 10px 12px;
+    font-size: 0.95rem;
+  }
+  
+  .send-btn,
+  .mic-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+  }
+  
+  /* Welcome */
+  .welcome {
+    padding: 30px 16px;
+  }
+  
+  .welcome-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 18px;
+  }
+  
+  .welcome h2 {
+    font-size: 0.9rem;
+  }
+  
+  .welcome p {
+    font-size: 0.9rem;
+    margin-bottom: 24px;
+  }
+  
+  .mode-info {
+    gap: 8px;
+  }
+  
+  .mode-card {
+    padding: 10px 14px;
+    font-size: 0.8rem;
+    border-radius: 10px;
+  }
+  
+  /* Code Preview Panel */
   .code-preview-panel {
     position: fixed;
     inset: 0;
     width: 100%;
     max-width: 100%;
     border-left: none;
+    z-index: 150;
   }
   
-  .mode-selector { display: none; }
+  /* Auth Screen */
+  .auth-screen { 
+    flex-direction: column; 
+  }
   
-  .auth-screen { flex-direction: column; }
   .auth-left { 
-    padding: 40px 24px; 
+    padding: 30px 20px; 
     min-height: auto;
   }
-  .auth-left h1 { font-size: 1.1rem; }
-  .auth-right { padding: 24px; }
-  .auth-box { padding: 32px 24px; }
+  
+  .auth-logo {
+    margin-bottom: 24px;
+  }
+  
+  .auth-logo-icon {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .auth-logo-text {
+    font-size: 0.8rem;
+  }
+  
+  .auth-left h1 { 
+    font-size: 0.9rem; 
+    line-height: 1.8;
+  }
+  
+  .auth-left p {
+    font-size: 0.95rem;
+    display: none;
+  }
+  
+  .auth-footer {
+    display: none;
+  }
+  
+  .auth-right { 
+    padding: 20px; 
+    flex: 2;
+  }
+  
+  .auth-box { 
+    padding: 28px 20px;
+    border-radius: 20px;
+  }
+  
+  .auth-header h2 {
+    font-size: 1.3rem;
+  }
+  
+  .auth-form input {
+    padding: 12px 14px;
+  }
+  
+  .auth-submit {
+    padding: 12px;
+  }
+  
+  /* Settings Modal */
+  .settings-modal {
+    width: 95%;
+    max-width: 360px;
+    border-radius: 16px;
+  }
+  
+  .settings-header {
+    padding: 14px 18px;
+  }
+  
+  .settings-content {
+    padding: 18px;
+  }
+  
+  .settings-section h4 {
+    font-size: 0.5rem;
+  }
+  
+  /* Thinking block */
+  .thinking-block {
+    padding: 12px;
+    border-radius: 10px;
+  }
+  
+  .thinking-header {
+    font-size: 0.5rem;
+  }
+  
+  .thinking-content {
+    font-size: 0.85rem;
+  }
+  
+  /* Sources */
+  .sources-list {
+    gap: 8px;
+  }
+  
+  .source-item {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    max-width: 180px;
+  }
+  
+  /* Typing */
+  .typing {
+    padding: 14px 16px;
+    border-radius: 14px;
+  }
+}
+
+/* Extra small phones */
+@media (max-width: 380px) {
+  .model-name {
+    display: none;
+  }
+  
+  .model-selector-btn {
+    padding: 8px 10px;
+  }
+  
+  .message {
+    max-width: 95%;
+  }
+  
+  .auth-box {
+    padding: 24px 16px;
+  }
 }
 
 /* ==================== SCROLLBAR GLOBAL ==================== */
