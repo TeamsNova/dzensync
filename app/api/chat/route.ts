@@ -155,7 +155,7 @@ const SEARCH_PROMPT = `Ты — Zenith Sync 3.0 с доступом к инте�
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, history, mode } = await request.json()
+    const { message, history, mode, isPremium } = await request.json()
 
     if (!message) {
       return new Response(JSON.stringify({ error: 'Сообщение пустое' }), { status: 400 })
@@ -164,6 +164,9 @@ export async function POST(request: NextRequest) {
     if (!process.env.GROQ_API_KEY) {
       return new Response(JSON.stringify({ error: 'API ключ не настроен' }), { status: 500 })
     }
+
+    // Select model based on premium status
+    const model = isPremium ? 'llama-3.3-70b-versatile' : 'gemma2-9b-it'
 
     let systemPrompt = SYSTEM_PROMPT
     let userContent = message
@@ -200,7 +203,7 @@ export async function POST(request: NextRequest) {
 
     // Streaming response
     const stream = await groq.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      model,
       messages,
       temperature: mode === 'thinking' ? 0.3 : 0.7,
       max_tokens: mode === 'thinking' ? 2000 : 1000,

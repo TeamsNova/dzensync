@@ -9,6 +9,12 @@ interface User {
   id: string
 }
 
+interface Profile {
+  is_premium: boolean
+  messages_today: number
+  last_message_date: string
+}
+
 interface Message {
   role: 'user' | 'assistant' | 'error'
   content: string
@@ -38,6 +44,12 @@ export default function Home() {
   const [authError, setAuthError] = useState('')
   const [authSubmitting, setAuthSubmitting] = useState(false)
   
+  // Premium & Limits
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [limitModalOpen, setLimitModalOpen] = useState(false)
+  const [premiumModalOpen, setPremiumModalOpen] = useState(false)
+  const FREE_LIMIT = 35
+  
   const [chats, setChats] = useState<Chat[]>([])
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
   const [input, setInput] = useState('')
@@ -65,6 +77,77 @@ export default function Home() {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  // Load profile when user logs in
+  useEffect(() => {
+    if (user) {
+      loadProfile()
+    } else {
+      setProfile(null)
+    }
+  }, [user])
+
+  const loadProfile = async () => {
+    if (!user) return
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('is_premium, messages_today, last_message_date')
+      .eq('id', user.id)
+      .single()
+    
+    if (error) {
+      console.error('Error loading profile:', error)
+      // Create profile if doesn't exist
+      const today = new Date().toISOString().split('T')[0]
+      const { data: newProfile } = await supabase
+        .from('profiles')
+        .insert({ id: user.id, is_premium: false, messages_today: 0, last_message_date: today })
+        .select()
+        .single()
+      if (newProfile) setProfile(newProfile)
+    } else {
+      // Check if new day - reset counter
+      const today = new Date().toISOString().split('T')[0]
+      if (data.last_message_date !== today) {
+        const { data: updated } = await supabase
+          .from('profiles')
+          .update({ messages_today: 0, last_message_date: today })
+          .eq('id', user.id)
+          .select()
+          .single()
+        setProfile(updated || { ...data, messages_today: 0, last_message_date: today })
+      } else {
+        setProfile(data)
+      }
+    }
+  }
+
+  const incrementMessageCount = async () => {
+    if (!user || !profile) return
+    
+    const today = new Date().toISOString().split('T')[0]
+    const newCount = profile.messages_today + 1
+    
+    await supabase
+      .from('profiles')
+      .update({ messages_today: newCount, last_message_date: today })
+      .eq('id', user.id)
+    
+    setProfile({ ...profile, messages_today: newCount, last_message_date: today })
+  }
+
+  const canSendMessage = () => {
+    if (!profile) return false
+    if (profile.is_premium) return true
+    return profile.messages_today < FREE_LIMIT
+  }
+
+  const messagesLeft = () => {
+    if (!profile) return 0
+    if (profile.is_premium) return Infinity
+    return Math.max(0, FREE_LIMIT - profile.messages_today)
+  }
 
   useEffect(() => {
     const saved = localStorage.getItem('zenith-chats')
@@ -243,6 +326,13 @@ export default function Home() {
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return
+    
+    // Check message limit
+    if (!canSendMessage()) {
+      setLimitModalOpen(true)
+      return
+    }
+    
     const userMessage = input.trim()
     setInput('')
 
@@ -282,7 +372,8 @@ export default function Home() {
         body: JSON.stringify({ 
           message: userMessage,
           history: [...chatMessages, { role: 'user', content: userMessage }].filter(m => m.role !== 'error').slice(-10),
-          mode
+          mode,
+          isPremium: profile?.is_premium || false
         }),
       })
 
@@ -337,6 +428,9 @@ export default function Home() {
         }
         return chat
       }))
+      
+      // Increment message count after successful response
+      await incrementMessageCount()
     } catch {
       setChats(prev => prev.map(chat => {
         if (chat.id === chatId) {
@@ -862,7 +956,21 @@ export default function Home() {
               <div className="settings-section">
                 <h4>Аккаунт</h4>
                 <p className="settings-info">{user?.email}</p>
-                <button className="settings-action" onClick={handleLogout}>
+                {profile?.is_premium ? (
+                  <div className="premium-badge">
+                    <i data-lucide="crown" style={{width: 16, height: 16}}></i>
+                    Premium
+                  </div>
+                ) : (
+                  <div className="free-info">
+                    <span>Осталось сообщений: {messagesLeft()}/{FREE_LIMIT}</span>
+                    <button className="upgrade-btn" onClick={() => { setSettingsOpen(false); setPremiumModalOpen(true); }}>
+                      <i data-lucide="crown" style={{width: 14, height: 14}}></i>
+                      Получить Premium
+                    </button>
+                  </div>
+                )}
+                <button className="settings-action" onClick={handleLogout} style={{marginTop: 12}}>
                   <i data-lucide="log-out" style={{width: 16, height: 16}}></i>
                   Выйти
                 </button>
@@ -882,6 +990,67 @@ export default function Home() {
                 <p className="settings-info">Zenith Sync 3.0</p>
                 <p className="settings-info muted">Создано командой Zenith</p>
               </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Limit Reached Modal */}
+      {limitModalOpen && (
+        <>
+          <div className="settings-overlay" onClick={() => setLimitModalOpen(false)} />
+          <div className="settings-modal limit-modal">
+            <div className="settings-header">
+              <h3>Лимит исчерпан</h3>
+              <button className="settings-close" onClick={() => setLimitModalOpen(false)}>
+                <i data-lucide="x" style={{width: 20, height: 20}}></i>
+              </button>
+            </div>
+            <div className="settings-content">
+              <div className="limit-icon">
+                <i data-lucide="alert-circle" style={{width: 48, height: 48}}></i>
+              </div>
+              <p className="limit-text">Вы использовали все {FREE_LIMIT} бесплатных сообщений на сегодня.</p>
+              <p className="limit-subtext">Лимит обновится завтра или получите Premium для безлимитного доступа.</p>
+              <button className="premium-btn" onClick={() => { setLimitModalOpen(false); setPremiumModalOpen(true); }}>
+                <i data-lucide="crown" style={{width: 18, height: 18}}></i>
+                Получить Premium
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Premium Modal */}
+      {premiumModalOpen && (
+        <>
+          <div className="settings-overlay" onClick={() => setPremiumModalOpen(false)} />
+          <div className="settings-modal premium-modal">
+            <div className="settings-header">
+              <h3>Zenith Premium</h3>
+              <button className="settings-close" onClick={() => setPremiumModalOpen(false)}>
+                <i data-lucide="x" style={{width: 20, height: 20}}></i>
+              </button>
+            </div>
+            <div className="settings-content">
+              <div className="premium-icon">
+                <i data-lucide="crown" style={{width: 48, height: 48}}></i>
+              </div>
+              <h4 className="premium-title">Безлимитный доступ</h4>
+              <ul className="premium-features">
+                <li><i data-lucide="check" style={{width: 16, height: 16}}></i> Неограниченные сообщения</li>
+                <li><i data-lucide="check" style={{width: 16, height: 16}}></i> Приоритетная поддержка</li>
+                <li><i data-lucide="check" style={{width: 16, height: 16}}></i> Ранний доступ к новым функциям</li>
+              </ul>
+              <div className="premium-price">
+                <span className="price">500₽</span>
+                <span className="period">/ навсегда</span>
+              </div>
+              <a href="https://t.me/dllsecurity" target="_blank" rel="noopener noreferrer" className="telegram-btn">
+                <i data-lucide="send" style={{width: 18, height: 18}}></i>
+                Написать в Telegram
+              </a>
+              <p className="premium-note">Напишите @dllsecurity для оплаты и активации Premium</p>
             </div>
           </div>
         </>
