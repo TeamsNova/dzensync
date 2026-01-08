@@ -1370,3 +1370,64 @@ body {
   font-size: 0.9rem;
   line-height: 1.6;
 }
+
+
+/* Search Sources */
+.search-sources {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(59, 130, 246, 0.15);
+}
+
+.sources-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 10px;
+}
+
+.sources-header i {
+  color: var(--accent);
+}
+
+.sources-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.source-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: 8px;
+  color: var(--accent2);
+  font-size: 0.8rem;
+  text-decoration: none;
+  transition: all 0.15s;
+  max-width: 200px;
+}
+
+.source-item:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.source-item span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.source-item i {
+  flex-shrink: 0;
+  opacity: 0.7;
+}

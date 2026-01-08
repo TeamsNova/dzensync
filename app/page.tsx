@@ -7,6 +7,7 @@ interface Message {
   role: 'user' | 'assistant' | 'error'
   content: string
   mode?: 'normal' | 'thinking' | 'search'
+  sources?: { title: string; url: string }[]
 }
 
 interface Chat {
@@ -175,6 +176,7 @@ export default function Home() {
   }
 
   const [streamingContent, setStreamingContent] = useState('')
+  const [streamingSources, setStreamingSources] = useState<{ title: string; url: string }[]>([])
 
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return
@@ -207,6 +209,7 @@ export default function Home() {
 
     setIsLoading(true)
     setStreamingContent('')
+    setStreamingSources([])
 
     try {
       const chatMessages = chats.find(c => c.id === chatId)?.messages || []
@@ -227,6 +230,7 @@ export default function Home() {
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
       let fullContent = ''
+      let sources: { title: string; url: string }[] = []
 
       if (reader) {
         while (true) {
@@ -242,6 +246,10 @@ export default function Home() {
               if (data === '[DONE]') continue
               try {
                 const parsed = JSON.parse(data)
+                if (parsed.sources) {
+                  sources = parsed.sources
+                  setStreamingSources(sources)
+                }
                 if (parsed.content) {
                   fullContent += parsed.content
                   setStreamingContent(fullContent)
@@ -259,7 +267,8 @@ export default function Home() {
             messages: [...chat.messages, { 
               role: 'assistant' as const, 
               content: fullContent || 'Не удалось получить ответ',
-              mode
+              mode,
+              sources: sources.length > 0 ? sources : undefined
             }]
           }
         }
@@ -278,6 +287,7 @@ export default function Home() {
     } finally {
       setIsLoading(false)
       setStreamingContent('')
+      setStreamingSources([])
     }
   }
 
@@ -589,7 +599,25 @@ export default function Home() {
                     )}
                     <div className="message-text">
                       {msg.role === 'assistant' ? (
-                        <MessageContent content={msg.content} onOpenCode={openCodePreview} onCopyCode={copyCode} />
+                        <>
+                          <MessageContent content={msg.content} onOpenCode={openCodePreview} onCopyCode={copyCode} />
+                          {msg.sources && msg.sources.length > 0 && (
+                            <div className="search-sources">
+                              <div className="sources-header">
+                                <i data-lucide="globe" style={{width: 14, height: 14}}></i>
+                                Источники
+                              </div>
+                              <div className="sources-list">
+                                {msg.sources.map((source, idx) => (
+                                  <a key={idx} href={source.url} target="_blank" rel="noopener noreferrer" className="source-item">
+                                    <i data-lucide="external-link" style={{width: 12, height: 12}}></i>
+                                    <span>{source.title}</span>
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
                       ) : msg.content}
                     </div>
                   </div>
@@ -625,8 +653,30 @@ export default function Home() {
                         Thinking
                       </div>
                     )}
+                    {mode === 'search' && (
+                      <div className="message-mode">
+                        <i data-lucide="search" style={{width: 12, height: 12}}></i>
+                        Search
+                      </div>
+                    )}
                     <div className="message-text">
                       <StreamingContent content={streamingContent} isThinking={mode === 'thinking'} />
+                      {streamingSources.length > 0 && (
+                        <div className="search-sources">
+                          <div className="sources-header">
+                            <i data-lucide="globe" style={{width: 14, height: 14}}></i>
+                            Источники
+                          </div>
+                          <div className="sources-list">
+                            {streamingSources.map((source, idx) => (
+                              <a key={idx} href={source.url} target="_blank" rel="noopener noreferrer" className="source-item">
+                                <i data-lucide="external-link" style={{width: 12, height: 12}}></i>
+                                <span>{source.title}</span>
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
