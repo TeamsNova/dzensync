@@ -33,9 +33,20 @@ async function searchDuckDuckGo(query: string): Promise<TavilyResult[]> {
     const urlRegex = /class="result__url"[^>]*>([\s\S]*?)<\/a>/g
     const titleRegex = /class="result__a"[^>]*>([\s\S]*?)<\/a>/g
     
-    const snippets = [...html.matchAll(snippetRegex)].map(m => m[1].replace(/<[^>]+>/g, '').trim())
-    const urls = [...html.matchAll(urlRegex)].map(m => m[1].replace(/<[^>]+>/g, '').trim())
-    const titles = [...html.matchAll(titleRegex)].map(m => m[1].replace(/<[^>]+>/g, '').trim())
+    const snippets: string[] = []
+    const urls: string[] = []
+    const titles: string[] = []
+    
+    let match
+    while ((match = snippetRegex.exec(html)) !== null) {
+      snippets.push(match[1].replace(/<[^>]+>/g, '').trim())
+    }
+    while ((match = urlRegex.exec(html)) !== null) {
+      urls.push(match[1].replace(/<[^>]+>/g, '').trim())
+    }
+    while ((match = titleRegex.exec(html)) !== null) {
+      titles.push(match[1].replace(/<[^>]+>/g, '').trim())
+    }
     
     for (let i = 0; i < Math.min(snippets.length, 5); i++) {
       if (snippets[i] && snippets[i].length > 20) {
