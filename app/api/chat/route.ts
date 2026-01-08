@@ -27,9 +27,10 @@ async function searchWeb(query: string): Promise<{ results: TavilyResult[], erro
       body: JSON.stringify({
         api_key: process.env.TAVILY_API_KEY,
         query,
-        search_depth: 'basic',
-        max_results: 5,
-        include_answer: false,
+        search_depth: 'advanced',
+        max_results: 8,
+        include_answer: true,
+        include_raw_content: false,
       }),
     })
     
