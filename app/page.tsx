@@ -97,25 +97,63 @@ export default function Home() {
     localStorage.removeItem('zenith-chats')
   }
 
-  const speakText = (text: string, index: number) => {
-    if ('speechSynthesis' in window) {
-      // Stop if already speaking
-      if (speakingId === index) {
-        window.speechSynthesis.cancel()
-        setSpeakingId(null)
-        return
+  const speakText = async (text: string, index: number) => {
+    // Stop if already speaking
+    if (speakingId === index) {
+      const audio = document.getElementById('tts-audio') as HTMLAudioElement
+      if (audio) {
+        audio.pause()
+        audio.currentTime = 0
+      }
+      setSpeakingId(null)
+      return
+    }
+
+    setSpeakingId(index)
+    setOpenMenuId(null)
+
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.slice(0, 500) })
+      })
+
+      if (!response.ok) throw new Error('TTS failed')
+
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      
+      let audio = document.getElementById('tts-audio') as HTMLAudioElement
+      if (!audio) {
+        audio = document.createElement('audio')
+        audio.id = 'tts-audio'
+        document.body.appendChild(audio)
       }
       
-      window.speechSynthesis.cancel()
-      const utterance = new SpeechSynthesisUtterance(text)
-      utterance.lang = 'ru-RU'
-      utterance.rate = 1
-      utterance.onend = () => setSpeakingId(null)
-      utterance.onerror = () => setSpeakingId(null)
-      setSpeakingId(index)
-      window.speechSynthesis.speak(utterance)
+      audio.src = url
+      audio.onended = () => {
+        setSpeakingId(null)
+        URL.revokeObjectURL(url)
+      }
+      audio.onerror = () => {
+        setSpeakingId(null)
+        URL.revokeObjectURL(url)
+      }
+      audio.play()
+    } catch {
+      // Fallback to browser TTS
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel()
+        const utterance = new SpeechSynthesisUtterance(text)
+        utterance.lang = 'ru-RU'
+        utterance.onend = () => setSpeakingId(null)
+        utterance.onerror = () => setSpeakingId(null)
+        window.speechSynthesis.speak(utterance)
+      } else {
+        setSpeakingId(null)
+      }
     }
-    setOpenMenuId(null)
   }
 
   const copyText = (text: string) => {
@@ -319,37 +357,41 @@ export default function Home() {
           ) : (
             <div className="messages">
               {messages.map((msg, i) => (
-                <div key={i} className={`message ${msg.role}`}>
-                  {msg.mode && msg.mode !== 'normal' && msg.role === 'assistant' && (
-                    <div className="message-mode">
-                      <i data-lucide={msg.mode === 'thinking' ? 'brain' : 'search'} style={{width: 12, height: 12}}></i>
-                      {msg.mode === 'thinking' ? 'Thinking' : 'Search'}
-                    </div>
-                  )}
-                  <div className="message-text">{msg.content}</div>
+                <div key={i} className={`message-wrapper ${msg.role}`}>
+                  <div className={`message ${msg.role}`}>
+                    {msg.mode && msg.mode !== 'normal' && msg.role === 'assistant' && (
+                      <div className="message-mode">
+                        <i data-lucide={msg.mode === 'thinking' ? 'brain' : 'search'} style={{width: 12, height: 12}}></i>
+                        {msg.mode === 'thinking' ? 'Thinking' : 'Search'}
+                      </div>
+                    )}
+                    <div className="message-text">{msg.content}</div>
+                  </div>
                   
                   {/* Menu for assistant messages */}
                   {msg.role === 'assistant' && (
                     <div className="message-actions">
-                      <button 
-                        className="message-menu-btn"
-                        onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === i ? null : i) }}
-                      >
-                        <i data-lucide="more-horizontal" style={{width: 16, height: 16}}></i>
-                      </button>
-                      
-                      {openMenuId === i && (
-                        <div className="message-menu" onClick={(e) => e.stopPropagation()}>
-                          <button onClick={() => speakText(msg.content, i)}>
-                            <i data-lucide={speakingId === i ? "volume-x" : "volume-2"} style={{width: 14, height: 14}}></i>
-                            {speakingId === i ? 'Остановить' : 'Озвучить'}
-                          </button>
-                          <button onClick={() => copyText(msg.content)}>
-                            <i data-lucide="copy" style={{width: 14, height: 14}}></i>
-                            Копировать
-                          </button>
-                        </div>
-                      )}
+                      <div className="message-actions-wrapper">
+                        <button 
+                          className="message-menu-btn"
+                          onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === i ? null : i) }}
+                        >
+                          <i data-lucide="more-vertical" style={{width: 16, height: 16}}></i>
+                        </button>
+                        
+                        {openMenuId === i && (
+                          <div className="message-menu" onClick={(e) => e.stopPropagation()}>
+                            <button onClick={() => speakText(msg.content, i)}>
+                              <i data-lucide={speakingId === i ? "volume-x" : "volume-2"} style={{width: 14, height: 14}}></i>
+                              {speakingId === i ? 'Остановить' : 'Озвучить'}
+                            </button>
+                            <button onClick={() => copyText(msg.content)}>
+                              <i data-lucide="copy" style={{width: 14, height: 14}}></i>
+                              Копировать
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
