@@ -153,28 +153,76 @@ export default function Home() {
   }
 
   return (
-    <>
-      {/* Background */}
-      <div className="bg-effects">
-        <div className="orb orb-1" />
-        <div className="orb orb-2" />
-        <div className="orb orb-3" />
-      </div>
-
-      {/* Sidebar Overlay */}
+    <div className="app">
+      {/* Sidebar Overlay (Mobile) */}
       {sidebarOpen && (
         <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
+      {/* Main Content */}
+      <div className="main">
+        {/* Mobile Header */}
+        <div className="mobile-header">
+          <h1>Zenith Sync</h1>
+          <button className="menu-btn" onClick={() => setSidebarOpen(true)}>☰</button>
+        </div>
+
+        {/* Chat Area */}
+        <div className="chat-area" ref={chatRef}>
+          {messages.length === 0 ? (
+            <div className="welcome">
+              <h2>Чем могу помочь?</h2>
+              <p>Задайте любой вопрос — помогу с кодом, текстом, анализом и многим другим.</p>
+            </div>
+          ) : (
+            <div className="messages">
+              {messages.map((msg, i) => (
+                <div key={i} className={`message ${msg.role}`}>
+                  {msg.content}
+                </div>
+              ))}
+
+              {isLoading && (
+                <div className="typing">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Input */}
+        <div className="input-area">
+          <div className="input-box">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Напишите сообщение..."
+              disabled={isLoading}
+            />
+            <button 
+              className="send-btn" 
+              onClick={sendMessage} 
+              disabled={isLoading || !input.trim()}
+            >
+              Отправить
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Sidebar - Right */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <h2>💬 Чаты</h2>
-          <button className="icon-btn" onClick={() => setSidebarOpen(false)}>✕</button>
+          <h2>Чаты</h2>
         </div>
         
         <button className="new-chat-btn" onClick={createNewChat}>
-          <span>+</span> Новый чат
+          + Новый чат
         </button>
 
         <div className="chat-list">
@@ -189,7 +237,7 @@ export default function Home() {
                 className="delete-btn"
                 onClick={(e) => { e.stopPropagation(); deleteChat(chat.id) }}
               >
-                🗑
+                ✕
               </button>
             </div>
           ))}
@@ -204,57 +252,6 @@ export default function Home() {
           </button>
         )}
       </aside>
-
-      {/* Main */}
-      <div className="container">
-        <header className="header glass">
-          <button className="menu-btn" onClick={() => setSidebarOpen(true)}>☰</button>
-          <div className="header-center">
-            <h1>⚡ Zenith Sync 3.0</h1>
-            <p>AI Assistant</p>
-          </div>
-          <button className="icon-btn" onClick={createNewChat}>+</button>
-        </header>
-
-        <div className="chat-container glass" ref={chatRef}>
-          {messages.length === 0 ? (
-            <div className="welcome">
-              <h2>Привет! 👋</h2>
-              <p>Я Zenith — твой AI ассистент. Задай любой вопрос и получи мгновенный ответ.</p>
-            </div>
-          ) : (
-            messages.map((msg, i) => (
-              <div key={i} className={`message ${msg.role}`}>
-                {msg.content}
-              </div>
-            ))
-          )}
-
-          {isLoading && (
-            <div className="typing">
-              <span />
-              <span />
-              <span />
-            </div>
-          )}
-        </div>
-
-        <div className="input-container glass">
-          <div className="input-wrapper">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Напиши сообщение..."
-              disabled={isLoading}
-            />
-            <button onClick={sendMessage} disabled={isLoading || !input.trim()}>
-              Отправить
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
+    </div>
   )
 }
