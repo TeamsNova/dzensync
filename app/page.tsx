@@ -44,8 +44,8 @@ export default function Home() {
       } else {
         setMessages(prev => [...prev, { role: 'assistant', content: data.response }])
       }
-    } catch (error) {
-      setMessages(prev => [...prev, { role: 'error', content: 'Ошибка соединения. Попробуй позже.' }])
+    } catch {
+      setMessages(prev => [...prev, { role: 'error', content: 'Ошибка соединения' }])
     } finally {
       setIsLoading(false)
     }
@@ -60,49 +60,50 @@ export default function Home() {
 
   return (
     <>
-      {/* Background Effects */}
+      {/* Background */}
       <div className="bg-effects">
-        <div className="grid-bg"></div>
-        <div className="glow-orb glow-orb-1"></div>
-        <div className="glow-orb glow-orb-2"></div>
+        <div className="orb orb-1" />
+        <div className="orb orb-2" />
+        <div className="orb orb-3" />
+        <div className="grid-bg" />
       </div>
 
       <div className="container">
-        <header className="header">
-          <h1>✨ Zenith Sync 3.0</h1>
-          <p>AI Assistant powered by Groq</p>
+        <header className="header glass">
+          <h1>⚡ Zenith Sync 3.0</h1>
+          <p>AI Assistant • Groq</p>
         </header>
 
-        <div className="chat-container" ref={chatRef}>
-          {messages.length === 0 && (
+        <div className="chat-container glass" ref={chatRef}>
+          {messages.length === 0 ? (
             <div className="welcome">
               <h2>Привет! 👋</h2>
-              <p>Я Zenith Sync — твой AI помощник. Спрашивай что угодно, отвечу моментально!</p>
+              <p>Я Zenith — твой AI ассистент. Задай любой вопрос и получи мгновенный ответ.</p>
             </div>
+          ) : (
+            messages.map((msg, i) => (
+              <div key={i} className={`message ${msg.role}`}>
+                {msg.content}
+              </div>
+            ))
           )}
-
-          {messages.map((msg, i) => (
-            <div key={i} className={`message ${msg.role}`}>
-              {msg.content}
-            </div>
-          ))}
 
           {isLoading && (
             <div className="typing">
-              <span></span>
-              <span></span>
-              <span></span>
+              <span />
+              <span />
+              <span />
             </div>
           )}
         </div>
 
-        <div className="input-container">
+        <div className="input-container glass">
           <div className="input-wrapper">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyPress}
               placeholder="Напиши сообщение..."
               disabled={isLoading}
             />
