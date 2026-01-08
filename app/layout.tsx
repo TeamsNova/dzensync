@@ -13,6 +13,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ru">
+      <head>
+        <script src="https://unpkg.com/lucide@latest" defer></script>
+      </head>
       <body>{children}</body>
     </html>
   )
