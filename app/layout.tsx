@@ -3,7 +3,7 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Zenith Sync 3.0',
-  description: 'AI Assistant powered by Groq',
+  description: 'AI Assistant',
 }
 
 export default function RootLayout({
