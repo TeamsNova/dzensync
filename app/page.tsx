@@ -64,7 +64,25 @@ export default function Home() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [selectedModel, setSelectedModel] = useState<'free' | 'pro'>('free')
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
   const chatRef = useRef<HTMLDivElement>(null)
+
+  // Load saved theme from localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('zenith-theme')
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+      setTheme(savedTheme)
+      document.documentElement.setAttribute('data-theme', savedTheme)
+    }
+  }, [])
+
+  // Toggle theme
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light'
+    setTheme(newTheme)
+    localStorage.setItem('zenith-theme', newTheme)
+    document.documentElement.setAttribute('data-theme', newTheme)
+  }
 
   // Load saved model from localStorage
   useEffect(() => {
@@ -886,6 +904,9 @@ export default function Home() {
               <i data-lucide="search" style={{width: 18, height: 18}}></i>
             </button>
           </div>
+          <button className="theme-toggle" onClick={toggleTheme} title={theme === 'light' ? 'Тёмная тема' : 'Светлая тема'}>
+            <i data-lucide={theme === 'light' ? 'moon' : 'sun'} style={{width: 20, height: 20}}></i>
+          </button>
           <button className="settings-btn" onClick={() => setSettingsOpen(true)} title="Настройки">
             <i data-lucide="settings" style={{width: 20, height: 20}}></i>
           </button>

@@ -7,14 +7,36 @@
   box-sizing: border-box;
 }
 
+/* Light theme (default) - Orange accent */
 :root {
-  --bg: #f0f7ff;
+  --bg: #fffaf5;
   --bg2: #ffffff;
-  --bg3: #e8f4ff;
-  --bg-dark: #1a3a5c;
-  --text: #1a3a5c;
-  --text-light: #4a6d8c;
-  --muted: #7a9bb8;
+  --bg3: #fff5eb;
+  --bg-dark: #5c3a1a;
+  --text: #3d2814;
+  --text-light: #6b4d2d;
+  --muted: #a08060;
+  --accent: #f97316;
+  --accent2: #fb923c;
+  --accent-light: #fed7aa;
+  --accent-glow: rgba(249, 115, 22, 0.25);
+  --gradient: linear-gradient(135deg, #f97316, #fb923c, #fdba74);
+  --gradient2: linear-gradient(135deg, #ea580c, #f97316);
+  --border: rgba(249, 115, 22, 0.15);
+  --border-accent: rgba(249, 115, 22, 0.3);
+  --shadow: 0 4px 20px rgba(249, 115, 22, 0.1);
+  --pixel-font: 'Press Start 2P', cursive;
+}
+
+/* Dark theme - Blue accent */
+[data-theme="dark"] {
+  --bg: #0a0a0f;
+  --bg2: #12121a;
+  --bg3: #1a1a24;
+  --bg-dark: #0a0a0f;
+  --text: #e8e8ed;
+  --text-light: #b0b0c0;
+  --muted: #6b6b7a;
   --accent: #3b9eff;
   --accent2: #60b3ff;
   --accent-light: #a8d8ff;
@@ -23,8 +45,7 @@
   --gradient2: linear-gradient(135deg, #2d8ae8, #3b9eff);
   --border: rgba(59, 158, 255, 0.15);
   --border-accent: rgba(59, 158, 255, 0.3);
-  --shadow: 0 4px 20px rgba(59, 158, 255, 0.1);
-  --pixel-font: 'Press Start 2P', cursive;
+  --shadow: 0 4px 20px rgba(59, 158, 255, 0.15);
 }
 
 body {
@@ -33,10 +54,32 @@ body {
   min-height: 100vh;
   color: var(--text);
   overflow: hidden;
+  transition: background 0.3s, color 0.3s;
 }
 
 /* Layout */
-.app { display: flex; height: 100vh; background: var(--bg); }
+.app { display: flex; height: 100vh; background: var(--bg); transition: background 0.3s; }
+
+/* Theme Toggle Button */
+.theme-toggle {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.theme-toggle:hover {
+  background: var(--accent-glow);
+  color: var(--accent);
+  border-color: var(--border-accent);
+}
 
 /* ==================== AUTH SCREEN (Claude-style split) ==================== */
 .auth-loading {
