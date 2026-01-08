@@ -42,6 +42,7 @@ export default function Home() {
   const [authEmail, setAuthEmail] = useState('')
   const [authPassword, setAuthPassword] = useState('')
   const [authError, setAuthError] = useState('')
+  const [authSuccess, setAuthSuccess] = useState('')
   const [authSubmitting, setAuthSubmitting] = useState(false)
   
   // Premium & Limits
@@ -64,6 +65,21 @@ export default function Home() {
   const [selectedModel, setSelectedModel] = useState<'free' | 'pro'>('free')
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
+
+  // Load saved model from localStorage
+  useEffect(() => {
+    const savedModel = localStorage.getItem('zenith-model')
+    if (savedModel === 'pro' || savedModel === 'free') {
+      setSelectedModel(savedModel)
+    }
+  }, [])
+
+  // Save model to localStorage when changed
+  const changeModel = (model: 'free' | 'pro') => {
+    setSelectedModel(model)
+    localStorage.setItem('zenith-model', model)
+    setModelMenuOpen(false)
+  }
   const recognitionRef = useRef<any>(null)
 
   // Auth check
@@ -76,6 +92,30 @@ export default function Home() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       setUser(session?.user ?? null)
     })
+
+    // Check URL params for auth messages
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const error = params.get('error')
+      const errorDesc = params.get('error_description')
+      
+      if (error) {
+        if (errorDesc?.includes('expired')) {
+          setAuthError('Ссылка истекла. Запросите новую.')
+        } else {
+          setAuthError(errorDesc || 'Ошибка авторизации')
+        }
+        // Clean URL
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+      
+      // Check for successful confirmation
+      const hash = window.location.hash
+      if (hash.includes('access_token')) {
+        setAuthSuccess('Email подтверждён! Вы вошли в систему.')
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+    }
 
     return () => subscription.unsubscribe()
   }, [])
@@ -375,7 +415,8 @@ export default function Home() {
           message: userMessage,
           history: [...chatMessages, { role: 'user', content: userMessage }].filter(m => m.role !== 'error').slice(-10),
           mode,
-          isPremium: profile?.is_premium && selectedModel === 'pro'
+          isPremium: profile?.is_premium && selectedModel === 'pro',
+          modelName: selectedModel === 'pro' ? 'Zenith Summit 3.5 Pro' : 'Zenith Sync 3.0'
         }),
       })
 
@@ -680,39 +721,66 @@ export default function Home() {
         </div>
       ) : !user ? (
         <div className="auth-screen">
-          <div className="auth-box">
-            <div className="auth-header">
-              <i data-lucide="sparkles" style={{width: 32, height: 32}}></i>
-              <h1>Zenith Sync</h1>
-              <p>Войдите чтобы продолжить</p>
+          {/* Left Side - Branding */}
+          <div className="auth-left">
+            <div className="auth-left-content">
+              <div className="auth-logo">
+                <div className="auth-logo-icon">
+                  <i data-lucide="sparkles" style={{width: 24, height: 24, color: '#fff'}}></i>
+                </div>
+                <span className="auth-logo-text">Zenith Sync</span>
+              </div>
+              <h1>Welcome back</h1>
+              <p>Войдите чтобы продолжить общение с AI-ассистентом нового поколения. Быстрые ответы, поиск в интернете и глубокий анализ.</p>
             </div>
-            <form onSubmit={handleAuth} className="auth-form">
-              <input
-                type="email"
-                placeholder="Email"
-                value={authEmail}
-                onChange={(e) => setAuthEmail(e.target.value)}
-                required
-              />
-              <input
-                type="password"
-                placeholder="Пароль"
-                value={authPassword}
-                onChange={(e) => setAuthPassword(e.target.value)}
-                required
-                minLength={6}
-              />
-              {authError && <div className="auth-error">{authError}</div>}
-              <button type="submit" disabled={authSubmitting} className="auth-submit">
-                {authSubmitting ? 'Загрузка...' : authMode === 'login' ? 'Войти' : 'Зарегистрироваться'}
-              </button>
-            </form>
-            <div className="auth-switch">
-              {authMode === 'login' ? (
-                <p>Нет аккаунта? <button onClick={() => { setAuthMode('register'); setAuthError(''); }}>Регистрация</button></p>
-              ) : (
-                <p>Уже есть аккаунт? <button onClick={() => { setAuthMode('login'); setAuthError(''); }}>Войти</button></p>
-              )}
+            <div className="auth-footer">
+              <i data-lucide="shield-check" style={{width: 14, height: 14}}></i>
+              Secure login — 2FA supported
+            </div>
+          </div>
+          
+          {/* Right Side - Form */}
+          <div className="auth-right">
+            <div className="auth-box">
+              <div className="auth-header">
+                <h2>{authMode === 'login' ? 'Sign in' : 'Create account'}</h2>
+                <p>{authMode === 'login' ? 'Use your email and password' : 'Fill in your details to get started'}</p>
+              </div>
+              <form onSubmit={handleAuth} className="auth-form">
+                <div className="auth-field">
+                  <label>Email</label>
+                  <input
+                    type="email"
+                    placeholder="you@example.com"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="auth-field">
+                  <label>Password</label>
+                  <input
+                    type="password"
+                    placeholder="••••••••"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    required
+                    minLength={6}
+                  />
+                </div>
+                {authError && <div className="auth-error">{authError}</div>}
+                {authSuccess && <div className="auth-success">{authSuccess}</div>}
+                <button type="submit" disabled={authSubmitting} className="auth-submit">
+                  {authSubmitting ? 'Loading...' : authMode === 'login' ? 'Sign in' : 'Create account'}
+                </button>
+              </form>
+              <div className="auth-switch">
+                {authMode === 'login' ? (
+                  <p>No account? <button onClick={() => { setAuthMode('register'); setAuthError(''); setAuthSuccess(''); }}>Create one</button></p>
+                ) : (
+                  <p>Already have an account? <button onClick={() => { setAuthMode('login'); setAuthError(''); setAuthSuccess(''); }}>Sign in</button></p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -774,7 +842,7 @@ export default function Home() {
                 <div className="model-menu">
                   <button 
                     className={`model-option ${selectedModel === 'free' ? 'active' : ''}`}
-                    onClick={() => { setSelectedModel('free'); setModelMenuOpen(false); }}
+                    onClick={() => { changeModel('free'); }}
                   >
                     <div className="model-option-info">
                       <span className="model-option-name">Zenith Sync 3.0</span>
@@ -786,8 +854,7 @@ export default function Home() {
                     className={`model-option pro ${selectedModel === 'pro' ? 'active' : ''} ${!profile?.is_premium ? 'locked' : ''}`}
                     onClick={() => { 
                       if (profile?.is_premium) {
-                        setSelectedModel('pro'); 
-                        setModelMenuOpen(false);
+                        changeModel('pro');
                       } else {
                         setModelMenuOpen(false);
                         setPremiumModalOpen(true);

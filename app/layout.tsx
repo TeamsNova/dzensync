@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import Script from 'next/script'
 
 export const metadata: Metadata = {
   title: 'Zenith Sync 3.0',
@@ -13,10 +14,23 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ru">
-      <head>
-        <script src="https://unpkg.com/lucide@latest" defer></script>
-      </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <Script 
+          src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"
+          strategy="afterInteractive"
+          onLoad={() => {
+            if (typeof window !== 'undefined' && (window as any).lucide) {
+              (window as any).lucide.createIcons();
+              // Re-run on DOM changes
+              const observer = new MutationObserver(() => {
+                (window as any).lucide.createIcons();
+              });
+              observer.observe(document.body, { childList: true, subtree: true });
+            }
+          }}
+        />
+      </body>
     </html>
   )
 }

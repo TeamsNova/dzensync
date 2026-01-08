@@ -166,7 +166,7 @@ const SEARCH_PROMPT = `Ты — Zenith Sync 3.0 с доступом к инте�
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, history, mode, isPremium } = await request.json()
+    const { message, history, mode, isPremium, modelName } = await request.json()
 
     if (!message) {
       return new Response(JSON.stringify({ error: 'Сообщение пустое' }), { status: 400 })
@@ -178,15 +178,16 @@ export async function POST(request: NextRequest) {
 
     // Select model based on premium status
     const model = isPremium ? 'llama-3.3-70b-versatile' : 'gemma2-9b-it'
+    const botName = modelName || 'Zenith Sync 3.0'
 
-    let systemPrompt = SYSTEM_PROMPT
+    let systemPrompt = SYSTEM_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
     let userContent = message
     let searchResults: TavilyResult[] = []
 
     if (mode === 'thinking') {
-      systemPrompt = THINKING_PROMPT
+      systemPrompt = THINKING_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
     } else if (mode === 'search') {
-      systemPrompt = SEARCH_PROMPT
+      systemPrompt = SEARCH_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
       
       // Perform web search
       const searchData = await searchWeb(message)
