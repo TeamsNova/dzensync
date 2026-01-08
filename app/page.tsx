@@ -18,7 +18,7 @@ export default function Home() {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const chatRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -53,7 +53,6 @@ export default function Home() {
     }
     setChats(prev => [newChat, ...prev])
     setCurrentChatId(newChat.id)
-    setSidebarOpen(false)
   }
 
   const deleteChat = (id: string) => {
@@ -155,16 +154,58 @@ export default function Home() {
   return (
     <div className="app">
       {/* Sidebar Overlay (Mobile) */}
-      {sidebarOpen && (
-        <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
-      )}
+      <div 
+        className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} 
+        onClick={() => setSidebarOpen(false)} 
+      />
+
+      {/* Sidebar - Left */}
+      <aside className={`sidebar ${!sidebarOpen ? 'hidden' : ''}`}>
+        <div className="sidebar-header">
+          <h2>Чаты</h2>
+          <button className="close-sidebar-btn" onClick={() => setSidebarOpen(false)}>✕</button>
+        </div>
+        
+        <button className="new-chat-btn" onClick={createNewChat}>
+          + Новый чат
+        </button>
+
+        <div className="chat-list">
+          {chats.map(chat => (
+            <div 
+              key={chat.id} 
+              className={`chat-item ${chat.id === currentChatId ? 'active' : ''}`}
+              onClick={() => setCurrentChatId(chat.id)}
+            >
+              <span className="chat-title">{chat.title}</span>
+              <button 
+                className="delete-btn"
+                onClick={(e) => { e.stopPropagation(); deleteChat(chat.id) }}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          {chats.length === 0 && (
+            <p className="no-chats">Нет чатов</p>
+          )}
+        </div>
+
+        {chats.length > 0 && (
+          <button className="clear-all-btn" onClick={clearAllChats}>
+            Очистить всё
+          </button>
+        )}
+      </aside>
 
       {/* Main Content */}
       <div className="main">
-        {/* Mobile Header */}
-        <div className="mobile-header">
-          <h1>Zenith Sync</h1>
-          <button className="menu-btn" onClick={() => setSidebarOpen(true)}>☰</button>
+        {/* Top Bar */}
+        <div className="topbar">
+          <button className="toggle-sidebar-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>
+            ☰
+          </button>
+          <span className="topbar-title">Zenith Sync</span>
         </div>
 
         {/* Chat Area */}
@@ -214,44 +255,6 @@ export default function Home() {
           </div>
         </div>
       </div>
-
-      {/* Sidebar - Right */}
-      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <div className="sidebar-header">
-          <h2>Чаты</h2>
-        </div>
-        
-        <button className="new-chat-btn" onClick={createNewChat}>
-          + Новый чат
-        </button>
-
-        <div className="chat-list">
-          {chats.map(chat => (
-            <div 
-              key={chat.id} 
-              className={`chat-item ${chat.id === currentChatId ? 'active' : ''}`}
-              onClick={() => { setCurrentChatId(chat.id); setSidebarOpen(false) }}
-            >
-              <span className="chat-title">{chat.title}</span>
-              <button 
-                className="delete-btn"
-                onClick={(e) => { e.stopPropagation(); deleteChat(chat.id) }}
-              >
-                ✕
-              </button>
-            </div>
-          ))}
-          {chats.length === 0 && (
-            <p className="no-chats">Нет чатов</p>
-          )}
-        </div>
-
-        {chats.length > 0 && (
-          <button className="clear-all-btn" onClick={clearAllChats}>
-            Очистить всё
-          </button>
-        )}
-      </aside>
     </div>
   )
 }
