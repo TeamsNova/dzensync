@@ -1453,6 +1453,7 @@ body {
 .premium-badge {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 10px 16px;
   background: linear-gradient(135deg, #f59e0b, #fbbf24);
@@ -1462,6 +1463,12 @@ body {
   font-weight: 600;
   margin-top: 10px;
   box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3);
+}
+
+.premium-until {
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0.8;
 }
 
 .free-info {

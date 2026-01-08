@@ -11,6 +11,7 @@ interface User {
 
 interface Profile {
   is_premium: boolean
+  premium_until: string | null
   messages_today: number
   last_message_date: string
 }
@@ -152,7 +153,7 @@ export default function Home() {
     
     const { data, error } = await supabase
       .from('profiles')
-      .select('is_premium, messages_today, last_message_date')
+      .select('is_premium, premium_until, messages_today, last_message_date')
       .eq('id', user.id)
       .single()
     
@@ -162,11 +163,25 @@ export default function Home() {
       const today = new Date().toISOString().split('T')[0]
       const { data: newProfile } = await supabase
         .from('profiles')
-        .insert({ id: user.id, is_premium: false, messages_today: 0, last_message_date: today })
+        .insert({ id: user.id, is_premium: false, premium_until: null, messages_today: 0, last_message_date: today })
         .select()
         .single()
       if (newProfile) setProfile(newProfile)
     } else {
+      // Check if premium expired
+      let isPremiumActive = data.is_premium
+      if (data.premium_until) {
+        const premiumEnd = new Date(data.premium_until)
+        if (premiumEnd < new Date()) {
+          // Premium expired - disable it
+          isPremiumActive = false
+          await supabase
+            .from('profiles')
+            .update({ is_premium: false, premium_until: null })
+            .eq('id', user.id)
+        }
+      }
+      
       // Check if new day - reset counter
       const today = new Date().toISOString().split('T')[0]
       if (data.last_message_date !== today) {
@@ -176,9 +191,9 @@ export default function Home() {
           .eq('id', user.id)
           .select()
           .single()
-        setProfile(updated || { ...data, messages_today: 0, last_message_date: today })
+        setProfile(updated ? { ...updated, is_premium: isPremiumActive } : { ...data, messages_today: 0, last_message_date: today, is_premium: isPremiumActive })
       } else {
-        setProfile(data)
+        setProfile({ ...data, is_premium: isPremiumActive })
       }
     }
   }
@@ -1098,6 +1113,11 @@ export default function Home() {
                   <div className="premium-badge">
                     <i data-lucide="crown" style={{width: 16, height: 16}}></i>
                     Premium
+                    {profile.premium_until && (
+                      <span className="premium-until">
+                        до {new Date(profile.premium_until).toLocaleDateString('ru-RU')}
+                      </span>
+                    )}
                   </div>
                 ) : (
                   <div className="free-info">
