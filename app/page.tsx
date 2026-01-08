@@ -2,6 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
+import { supabase } from '../lib/supabase'
+
+interface User {
+  email?: string
+  id: string
+}
 
 interface Message {
   role: 'user' | 'assistant' | 'error'
@@ -24,6 +30,14 @@ interface CodePreview {
 type Mode = 'normal' | 'thinking' | 'search'
 
 export default function Home() {
+  const [user, setUser] = useState<User | null>(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const [authEmail, setAuthEmail] = useState('')
+  const [authPassword, setAuthPassword] = useState('')
+  const [authError, setAuthError] = useState('')
+  const [authSubmitting, setAuthSubmitting] = useState(false)
+  
   const [chats, setChats] = useState<Chat[]>([])
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
   const [input, setInput] = useState('')
@@ -37,6 +51,20 @@ export default function Home() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
   const recognitionRef = useRef<any>(null)
+
+  // Auth check
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
+      setUser(session?.user ?? null)
+      setAuthLoading(false)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+      setUser(session?.user ?? null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   useEffect(() => {
     const saved = localStorage.getItem('zenith-chats')
@@ -78,6 +106,41 @@ export default function Home() {
 
   const currentChat = chats.find(c => c.id === currentChatId)
   const messages = currentChat?.messages || []
+
+  // Auth functions
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setAuthError('')
+    setAuthSubmitting(true)
+
+    try {
+      if (authMode === 'register') {
+        const { error } = await supabase.auth.signUp({
+          email: authEmail,
+          password: authPassword,
+        })
+        if (error) throw error
+        setAuthError('Проверьте почту для подтверждения!')
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: authEmail,
+          password: authPassword,
+        })
+        if (error) throw error
+      }
+    } catch (err: any) {
+      setAuthError(err.message || 'Ошибка авторизации')
+    } finally {
+      setAuthSubmitting(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    setChats([])
+    setCurrentChatId(null)
+    localStorage.removeItem('zenith-chats')
+  }
 
   const createNewChat = () => {
     const newChat: Chat = {
@@ -514,6 +577,51 @@ export default function Home() {
 
   return (
     <div className={`app ${codePreview ? 'with-preview' : ''}`}>
+      {/* Auth Screen */}
+      {authLoading ? (
+        <div className="auth-loading">
+          <div className="typing-dots"><span /><span /><span /></div>
+        </div>
+      ) : !user ? (
+        <div className="auth-screen">
+          <div className="auth-box">
+            <div className="auth-header">
+              <i data-lucide="sparkles" style={{width: 32, height: 32}}></i>
+              <h1>Zenith Sync</h1>
+              <p>Войдите чтобы продолжить</p>
+            </div>
+            <form onSubmit={handleAuth} className="auth-form">
+              <input
+                type="email"
+                placeholder="Email"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                required
+              />
+              <input
+                type="password"
+                placeholder="Пароль"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                required
+                minLength={6}
+              />
+              {authError && <div className="auth-error">{authError}</div>}
+              <button type="submit" disabled={authSubmitting} className="auth-submit">
+                {authSubmitting ? 'Загрузка...' : authMode === 'login' ? 'Войти' : 'Зарегистрироваться'}
+              </button>
+            </form>
+            <div className="auth-switch">
+              {authMode === 'login' ? (
+                <p>Нет аккаунта? <button onClick={() => { setAuthMode('register'); setAuthError(''); }}>Регистрация</button></p>
+              ) : (
+                <p>Уже есть аккаунт? <button onClick={() => { setAuthMode('login'); setAuthError(''); }}>Войти</button></p>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+      <>
       {/* Sidebar Overlay */}
       <div className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)} />
 
@@ -752,6 +860,14 @@ export default function Home() {
             </div>
             <div className="settings-content">
               <div className="settings-section">
+                <h4>Аккаунт</h4>
+                <p className="settings-info">{user?.email}</p>
+                <button className="settings-action" onClick={handleLogout}>
+                  <i data-lucide="log-out" style={{width: 16, height: 16}}></i>
+                  Выйти
+                </button>
+              </div>
+              <div className="settings-section">
                 <h4>Память</h4>
                 <p className="settings-info">
                   Чатов: {chats.length} | Сообщений: {chats.reduce((acc, c) => acc + c.messages.length, 0)}
@@ -768,6 +884,8 @@ export default function Home() {
               </div>
             </div>
           </div>
+        </>
+      )}
         </>
       )}
     </div>
