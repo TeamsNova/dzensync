@@ -230,6 +230,39 @@ body {
   font-size: 0.95rem;
   font-weight: 500;
   color: var(--muted);
+  flex: 1;
+}
+
+/* Mode Selector */
+.mode-selector {
+  display: flex;
+  gap: 4px;
+  background: rgba(59, 130, 246, 0.08);
+  padding: 4px;
+  border-radius: 10px;
+}
+
+.mode-btn {
+  background: transparent;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.mode-btn:hover {
+  color: var(--text);
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.mode-btn.active {
+  background: var(--accent);
+  color: #fff;
 }
 
 /* Chat Area */
@@ -308,18 +341,46 @@ body {
   border-radius: 16px;
   border-bottom-left-radius: 4px;
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.typing-mode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.typing-dots {
+  display: flex;
   gap: 5px;
 }
 
-.typing span {
+.typing-dots span {
   width: 7px;
   height: 7px;
   background: var(--accent);
   border-radius: 50%;
   animation: typing 1.2s infinite;
 }
-.typing span:nth-child(2) { animation-delay: 0.15s; }
-.typing span:nth-child(3) { animation-delay: 0.3s; }
+.typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+/* Message Mode Badge */
+.message-mode {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: var(--accent);
+  margin-bottom: 6px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
 
 @keyframes typing {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
@@ -337,6 +398,18 @@ body {
   padding: 40px 20px;
 }
 
+.welcome-icon {
+  width: 64px;
+  height: 64px;
+  background: rgba(59, 130, 246, 0.15);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 20px;
+  color: var(--accent);
+}
+
 .welcome h2 {
   font-size: 1.8rem;
   font-weight: 600;
@@ -349,6 +422,28 @@ body {
   font-size: 0.95rem;
   max-width: 400px;
   line-height: 1.6;
+  margin-bottom: 30px;
+}
+
+.mode-info {
+  display: flex;
+  gap: 12px;
+}
+
+.mode-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.mode-card i {
+  color: var(--accent);
 }
 
 /* Input Area */
@@ -393,14 +488,15 @@ body {
 .send-btn {
   background: linear-gradient(135deg, var(--accent), var(--accent2));
   border: none;
-  padding: 12px 24px;
+  width: 44px;
+  height: 44px;
   border-radius: 10px;
   color: #fff;
-  font-weight: 600;
-  font-size: 0.9rem;
-  font-family: inherit;
   cursor: pointer;
   transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .send-btn:hover:not(:disabled) {
