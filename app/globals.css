@@ -1439,6 +1439,7 @@ body {
   align-items: center;
   justify-content: center;
   height: 100vh;
+  width: 100vw;
   background: var(--bg);
 }
 
@@ -1447,6 +1448,7 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  width: 100vw;
   background: var(--bg);
   padding: 20px;
 }
@@ -1750,4 +1752,123 @@ body {
   font-size: 0.8rem;
   color: var(--muted);
   margin-top: 12px;
+}
+
+
+/* Model Selector */
+.model-selector-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.model-selector-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+
+.model-selector-btn:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.model-name {
+  white-space: nowrap;
+}
+
+.model-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.model-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  background: var(--bg2);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: 12px;
+  padding: 8px;
+  min-width: 280px;
+  z-index: 100;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.model-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: left;
+  font-family: inherit;
+}
+
+.model-option:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.model-option.active {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.model-option.locked {
+  opacity: 0.7;
+}
+
+.model-option.locked:hover {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.model-option-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.model-option-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.model-option-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.model-option.pro .model-option-name {
+  color: #fbbf24;
+}
+
+.model-option-desc {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.model-option i {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.model-option.locked i {
+  color: #fbbf24;
 }

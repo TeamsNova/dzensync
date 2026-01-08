@@ -61,6 +61,8 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false)
   const [codePreview, setCodePreview] = useState<CodePreview | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [selectedModel, setSelectedModel] = useState<'free' | 'pro'>('free')
+  const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
   const recognitionRef = useRef<any>(null)
 
@@ -373,7 +375,7 @@ export default function Home() {
           message: userMessage,
           history: [...chatMessages, { role: 'user', content: userMessage }].filter(m => m.role !== 'error').slice(-10),
           mode,
-          isPremium: profile?.is_premium || false
+          isPremium: profile?.is_premium && selectedModel === 'pro'
         }),
       })
 
@@ -757,7 +759,55 @@ export default function Home() {
           <button className="toggle-sidebar-btn" onClick={() => setSidebarOpen(!sidebarOpen)}>
             <i data-lucide={sidebarOpen ? "panel-left-close" : "panel-left-open"} style={{width: 20, height: 20}}></i>
           </button>
-          <span className="topbar-title">Zenith Sync</span>
+          
+          {/* Model Selector */}
+          <div className="model-selector-wrapper">
+            <button className="model-selector-btn" onClick={() => setModelMenuOpen(!modelMenuOpen)}>
+              <span className="model-name">
+                {selectedModel === 'pro' ? 'Zenith Summit 3.5 Pro' : 'Zenith Sync 3.0'}
+              </span>
+              <i data-lucide="chevron-down" style={{width: 16, height: 16}}></i>
+            </button>
+            {modelMenuOpen && (
+              <>
+                <div className="model-menu-overlay" onClick={() => setModelMenuOpen(false)} />
+                <div className="model-menu">
+                  <button 
+                    className={`model-option ${selectedModel === 'free' ? 'active' : ''}`}
+                    onClick={() => { setSelectedModel('free'); setModelMenuOpen(false); }}
+                  >
+                    <div className="model-option-info">
+                      <span className="model-option-name">Zenith Sync 3.0</span>
+                      <span className="model-option-desc">Быстрая модель для повседневных задач</span>
+                    </div>
+                    {selectedModel === 'free' && <i data-lucide="check" style={{width: 16, height: 16}}></i>}
+                  </button>
+                  <button 
+                    className={`model-option pro ${selectedModel === 'pro' ? 'active' : ''} ${!profile?.is_premium ? 'locked' : ''}`}
+                    onClick={() => { 
+                      if (profile?.is_premium) {
+                        setSelectedModel('pro'); 
+                        setModelMenuOpen(false);
+                      } else {
+                        setModelMenuOpen(false);
+                        setPremiumModalOpen(true);
+                      }
+                    }}
+                  >
+                    <div className="model-option-info">
+                      <div className="model-option-name-row">
+                        <span className="model-option-name">Zenith Summit 3.5 Pro</span>
+                        {!profile?.is_premium && <i data-lucide="lock" style={{width: 12, height: 12}}></i>}
+                      </div>
+                      <span className="model-option-desc">Продвинутая модель для сложных задач</span>
+                    </div>
+                    {selectedModel === 'pro' && profile?.is_premium && <i data-lucide="check" style={{width: 16, height: 16}}></i>}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
           <div className="mode-selector">
             <button className={`mode-btn ${mode === 'normal' ? 'active' : ''}`} onClick={() => setMode('normal')} title="Обычный режим">
               <i data-lucide="message-circle" style={{width: 18, height: 18}}></i>
