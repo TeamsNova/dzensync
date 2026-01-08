@@ -16,6 +16,13 @@ interface TavilyResponse {
   answer?: string
 }
 
+interface Attachment {
+  type: 'image' | 'file'
+  name: string
+  data: string // base64 for images, text content for files
+  mimeType?: string
+}
+
 async function searchDuckDuckGo(query: string): Promise<TavilyResult[]> {
   try {
     const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`
@@ -28,7 +35,6 @@ async function searchDuckDuckGo(query: string): Promise<TavilyResult[]> {
     const html = await response.text()
     const results: TavilyResult[] = []
     
-    // Parse snippets
     const snippetRegex = /class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g
     const urlRegex = /class="result__url"[^>]*>([\s\S]*?)<\/a>/g
     const titleRegex = /class="result__a"[^>]*>([\s\S]*?)<\/a>/g
@@ -65,7 +71,6 @@ async function searchDuckDuckGo(query: string): Promise<TavilyResult[]> {
 }
 
 async function searchWeb(query: string): Promise<{ results: TavilyResult[], error?: string }> {
-  // Try Tavily first if API key exists
   if (process.env.TAVILY_API_KEY) {
     try {
       const response = await fetch('https://api.tavily.com/search', {
@@ -92,13 +97,29 @@ async function searchWeb(query: string): Promise<{ results: TavilyResult[], erro
     }
   }
   
-  // Fallback to DuckDuckGo
   const ddgResults = await searchDuckDuckGo(query)
   if (ddgResults.length > 0) {
     return { results: ddgResults }
   }
   
   return { results: [], error: 'Search failed' }
+}
+
+// Generate image using Pollinations.ai (free)
+async function generateImage(prompt: string): Promise<string | null> {
+  try {
+    const encodedPrompt = encodeURIComponent(prompt)
+    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true`
+    
+    // Verify the image is accessible
+    const response = await fetch(imageUrl, { method: 'HEAD' })
+    if (response.ok) {
+      return imageUrl
+    }
+    return null
+  } catch {
+    return null
+  }
 }
 
 const SYSTEM_PROMPT = `Ты — Zenith Sync 3.0, продвинутый AI ассистент нового поколения.
@@ -116,17 +137,18 @@ const SYSTEM_PROMPT = `Ты — Zenith Sync 3.0, продвинутый AI ас�
 - Английские слова допустимы ТОЛЬКО для технических терминов (API, JavaScript, Python и т.д.)
 - Если не знаешь как сказать что-то по-русски — перефразируй, но НЕ вставляй иностранные слова
 
+ГЕНЕРАЦИЯ ИЗОБРАЖЕНИЙ:
+- Если пользователь просит создать/нарисовать/сгенерировать картинку, ответь ТОЛЬКО командой: [GENERATE_IMAGE: описание на английском]
+- Пример: [GENERATE_IMAGE: a cute cat sitting on a rainbow]
+- После команды НЕ пиши ничего лишнего
+
 ФОРМАТИРОВАНИЕ КОДА:
 - Когда пишешь код, ВСЕГДА используй markdown с указанием языка
-- Пример: \`\`\`python
-код тут
-\`\`\`
-- ОБЯЗАТЕЛЬНО указывай язык после трёх бэктиков (python, javascript, html, css и т.д.)
+- ОБЯЗАТЕЛЬНО указывай язык после трёх бэктиков
 
 ЧЕСТНОСТЬ:
 - Если не знаешь точно — скажи "не знаю точно"
 - НИКОГДА не выдумывай факты, даты, цитаты
-- Лучше честно признаться чем врать
 
 Твой стиль:
 - НЕ используй эмодзи
@@ -174,11 +196,21 @@ const SEARCH_PROMPT = `Ты — Zenith Sync 3.0 с доступом к инте�
 - Если информация противоречивая — укажи это
 - Будь конкретным и полезным`
 
+const VISION_PROMPT = `Ты — Zenith Sync 3.0 с возможностью анализа изображений.
+
+ТВОЯ ИДЕНТИЧНОСТЬ: Ты Zenith Sync 3.0, создан командой Zenith.
+
+КРИТИЧЕСКИ ВАЖНО — ЯЗЫК:
+- Отвечай СТРОГО на русском языке
+- ЗАПРЕЩЕНО использовать слова на вьетнамском, китайском, корейском или любом другом азиатском языке
+
+Проанализируй изображение и ответь на вопрос пользователя. Будь детальным и полезным.`
+
 export async function POST(request: NextRequest) {
   try {
-    const { message, history, mode, isPremium, modelName } = await request.json()
+    const { message, history, mode, isPremium, modelName, attachments } = await request.json()
 
-    if (!message) {
+    if (!message && (!attachments || attachments.length === 0)) {
       return new Response(JSON.stringify({ error: 'Сообщение пустое' }), { status: 400 })
     }
 
@@ -186,20 +218,68 @@ export async function POST(request: NextRequest) {
       return new Response(JSON.stringify({ error: 'API ключ не настроен' }), { status: 500 })
     }
 
-    // Select model based on premium status
-    const model = isPremium ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant'
     const botName = modelName || 'Zenith Sync 3.0'
+    let searchResults: TavilyResult[] = []
+    
+    // Check if there are image attachments
+    const imageAttachments = (attachments || []).filter((a: Attachment) => a.type === 'image')
+    const fileAttachments = (attachments || []).filter((a: Attachment) => a.type === 'file')
+    const hasImages = imageAttachments.length > 0
+    
+    // Select model based on content
+    let model: string
+    if (hasImages && isPremium) {
+      model = 'llama-3.2-90b-vision-preview' // Vision model for images
+    } else if (isPremium) {
+      model = 'llama-3.3-70b-versatile'
+    } else {
+      model = 'llama-3.1-8b-instant'
+    }
 
     let systemPrompt = SYSTEM_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
-    let userContent = message
-    let searchResults: TavilyResult[] = []
+    let userContent: string | { type: string; text?: string; image_url?: { url: string } }[] = message || ''
+
+    // Handle file attachments - add content to message
+    if (fileAttachments.length > 0) {
+      const fileContext = fileAttachments.map((f: Attachment) => 
+        `--- Файл: ${f.name} ---\n${f.data}\n--- Конец файла ---`
+      ).join('\n\n')
+      userContent = `${fileContext}\n\n${message || 'Проанализируй этот файл'}`
+    }
+
+    // Handle image attachments with vision model
+    if (hasImages && isPremium) {
+      systemPrompt = VISION_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
+      
+      const contentParts: { type: string; text?: string; image_url?: { url: string } }[] = []
+      
+      // Add images
+      for (const img of imageAttachments) {
+        contentParts.push({
+          type: 'image_url',
+          image_url: { url: img.data } // base64 data URL
+        })
+      }
+      
+      // Add text
+      contentParts.push({
+        type: 'text',
+        text: message || 'Что на этом изображении?'
+      })
+      
+      userContent = contentParts
+    } else if (hasImages && !isPremium) {
+      // Free users can't use vision
+      return new Response(JSON.stringify({ 
+        error: 'Анализ изображений доступен только для Premium пользователей' 
+      }), { status: 403 })
+    }
 
     if (mode === 'thinking') {
       systemPrompt = THINKING_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
     } else if (mode === 'search') {
       systemPrompt = SEARCH_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
       
-      // Perform web search
       const searchData = await searchWeb(message)
       searchResults = searchData.results
       
@@ -214,13 +294,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const messages = [
-      { role: 'system' as const, content: systemPrompt },
+    const messages: any[] = [
+      { role: 'system', content: systemPrompt },
       ...(history || []).map((m: { role: string; content: string }) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       })),
-      { role: 'user' as const, content: userContent },
+      { role: 'user', content: userContent },
     ]
 
     // Streaming response
@@ -228,7 +308,7 @@ export async function POST(request: NextRequest) {
       model,
       messages,
       temperature: mode === 'thinking' ? 0.3 : 0.7,
-      max_tokens: mode === 'thinking' ? 2000 : 1000,
+      max_tokens: mode === 'thinking' ? 2000 : 1500,
       stream: true,
     })
 
@@ -242,12 +322,26 @@ export async function POST(request: NextRequest) {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ sources })}\n\n`))
           }
           
+          let fullContent = ''
+          
           for await (const chunk of stream) {
             const content = chunk.choices[0]?.delta?.content || ''
             if (content) {
+              fullContent += content
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`))
             }
           }
+          
+          // Check if response contains image generation command
+          const imageMatch = fullContent.match(/\[GENERATE_IMAGE:\s*(.+?)\]/)
+          if (imageMatch) {
+            const imagePrompt = imageMatch[1].trim()
+            const imageUrl = await generateImage(imagePrompt)
+            if (imageUrl) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ generatedImage: imageUrl })}\n\n`))
+            }
+          }
+          
           controller.enqueue(encoder.encode('data: [DONE]\n\n'))
           controller.close()
         } catch (error) {

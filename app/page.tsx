@@ -21,6 +21,8 @@ interface Message {
   content: string
   mode?: 'normal' | 'thinking' | 'search'
   sources?: { title: string; url: string }[]
+  attachments?: Attachment[]
+  generatedImage?: string
 }
 
 interface Chat {
@@ -32,6 +34,14 @@ interface Chat {
 interface CodePreview {
   code: string
   language: string
+}
+
+interface Attachment {
+  type: 'image' | 'file'
+  name: string
+  data: string
+  mimeType?: string
+  preview?: string
 }
 
 type Mode = 'normal' | 'thinking' | 'search'
@@ -66,7 +76,9 @@ export default function Home() {
   const [selectedModel, setSelectedModel] = useState<'free' | 'pro'>('free')
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const [attachments, setAttachments] = useState<Attachment[]>([])
   const chatRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Load saved theme from localStorage
   useEffect(() => {
@@ -252,7 +264,7 @@ export default function Home() {
       }
     }, 100)
     return () => clearTimeout(timer)
-  }, [chats, currentChatId, sidebarOpen, mode, openMenuId, codePreview, input])
+  }, [chats, currentChatId, sidebarOpen, mode, openMenuId, codePreview, input, attachments])
 
   useEffect(() => {
     const handleClick = () => setOpenMenuId(null)
@@ -398,9 +410,76 @@ export default function Home() {
 
   const [streamingContent, setStreamingContent] = useState('')
   const [streamingSources, setStreamingSources] = useState<{ title: string; url: string }[]>([])
+  const [streamingImage, setStreamingImage] = useState<string | null>(null)
+
+  // File handling functions
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+
+    for (const file of Array.from(files)) {
+      if (file.type.startsWith('image/')) {
+        // Handle image
+        const reader = new FileReader()
+        reader.onload = () => {
+          const base64 = reader.result as string
+          setAttachments(prev => [...prev, {
+            type: 'image',
+            name: file.name,
+            data: base64,
+            mimeType: file.type,
+            preview: base64
+          }])
+        }
+        reader.readAsDataURL(file)
+      } else if (
+        file.type.startsWith('text/') ||
+        file.name.endsWith('.json') ||
+        file.name.endsWith('.js') ||
+        file.name.endsWith('.ts') ||
+        file.name.endsWith('.tsx') ||
+        file.name.endsWith('.jsx') ||
+        file.name.endsWith('.py') ||
+        file.name.endsWith('.html') ||
+        file.name.endsWith('.css') ||
+        file.name.endsWith('.md') ||
+        file.name.endsWith('.xml') ||
+        file.name.endsWith('.yaml') ||
+        file.name.endsWith('.yml') ||
+        file.name.endsWith('.sql') ||
+        file.name.endsWith('.sh') ||
+        file.name.endsWith('.env') ||
+        file.name.endsWith('.txt')
+      ) {
+        // Handle text file
+        const reader = new FileReader()
+        reader.onload = () => {
+          const text = reader.result as string
+          setAttachments(prev => [...prev, {
+            type: 'file',
+            name: file.name,
+            data: text.slice(0, 50000), // Limit to 50k chars
+            mimeType: file.type
+          }])
+        }
+        reader.readAsText(file)
+      } else {
+        alert(`Файл ${file.name} не поддерживается. Поддерживаются: изображения, текстовые файлы, код.`)
+      }
+    }
+    
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index))
+  }
 
   const sendMessage = async () => {
-    if (!input.trim() || isLoading) return
+    if ((!input.trim() && attachments.length === 0) || isLoading) return
     
     // Check message limit
     if (!canSendMessage()) {
@@ -409,13 +488,15 @@ export default function Home() {
     }
     
     const userMessage = input.trim()
+    const currentAttachments = [...attachments]
     setInput('')
+    setAttachments([])
 
     let chatId = currentChatId
     if (!chatId) {
       const newChat: Chat = {
         id: Date.now().toString(),
-        title: userMessage.slice(0, 30) + (userMessage.length > 30 ? '...' : ''),
+        title: userMessage.slice(0, 30) + (userMessage.length > 30 ? '...' : '') || 'Файл',
         messages: []
       }
       setChats(prev => [newChat, ...prev])
@@ -428,8 +509,13 @@ export default function Home() {
         const isFirst = chat.messages.length === 0
         return {
           ...chat,
-          messages: [...chat.messages, { role: 'user' as const, content: userMessage, mode }],
-          title: isFirst ? userMessage.slice(0, 30) + (userMessage.length > 30 ? '...' : '') : chat.title
+          messages: [...chat.messages, { 
+            role: 'user' as const, 
+            content: userMessage, 
+            mode,
+            attachments: currentAttachments.length > 0 ? currentAttachments : undefined
+          }],
+          title: isFirst ? (userMessage.slice(0, 30) + (userMessage.length > 30 ? '...' : '') || 'Файл') : chat.title
         }
       }
       return chat
@@ -438,6 +524,7 @@ export default function Home() {
     setIsLoading(true)
     setStreamingContent('')
     setStreamingSources([])
+    setStreamingImage(null)
 
     try {
       const chatMessages = chats.find(c => c.id === chatId)?.messages || []
@@ -449,7 +536,8 @@ export default function Home() {
           history: [...chatMessages, { role: 'user', content: userMessage }].filter(m => m.role !== 'error').slice(-10),
           mode,
           isPremium: profile?.is_premium && selectedModel === 'pro',
-          modelName: selectedModel === 'pro' ? 'Zenith Summit 3.5 Pro' : 'Zenith Sync 3.0'
+          modelName: selectedModel === 'pro' ? 'Zenith Summit 3.5 Pro' : 'Zenith Sync 3.0',
+          attachments: currentAttachments
         }),
       })
 
@@ -461,6 +549,7 @@ export default function Home() {
       const decoder = new TextDecoder()
       let fullContent = ''
       let sources: { title: string; url: string }[] = []
+      let generatedImage: string | null = null
 
       if (reader) {
         while (true) {
@@ -484,6 +573,10 @@ export default function Home() {
                   fullContent += parsed.content
                   setStreamingContent(fullContent)
                 }
+                if (parsed.generatedImage) {
+                  generatedImage = parsed.generatedImage
+                  setStreamingImage(generatedImage)
+                }
               } catch {}
             }
           }
@@ -493,6 +586,13 @@ export default function Home() {
       // Clear streaming BEFORE adding to messages to prevent duplication
       setStreamingContent('')
       setStreamingSources([])
+      setStreamingImage(null)
+
+      // Clean up the content - remove image generation command
+      let cleanContent = fullContent.replace(/\[GENERATE_IMAGE:\s*.+?\]/g, '').trim()
+      if (generatedImage && !cleanContent) {
+        cleanContent = 'Вот сгенерированное изображение:'
+      }
 
       setChats(prev => prev.map(chat => {
         if (chat.id === chatId) {
@@ -500,9 +600,10 @@ export default function Home() {
             ...chat,
             messages: [...chat.messages, { 
               role: 'assistant' as const, 
-              content: fullContent || 'Не удалось получить ответ',
+              content: cleanContent || 'Не удалось получить ответ',
               mode,
-              sources: sources.length > 0 ? sources : undefined
+              sources: sources.length > 0 ? sources : undefined,
+              generatedImage: generatedImage || undefined
             }]
           }
         }
@@ -954,10 +1055,35 @@ export default function Home() {
                         {msg.mode === 'thinking' ? 'Thinking' : 'Search'}
                       </div>
                     )}
+                    {/* User attachments */}
+                    {msg.role === 'user' && msg.attachments && msg.attachments.length > 0 && (
+                      <div className="message-attachments">
+                        {msg.attachments.map((att, idx) => (
+                          att.type === 'image' && att.preview ? (
+                            <img key={idx} src={att.preview} alt={att.name} className="message-attachment-image" />
+                          ) : (
+                            <div key={idx} className="message-attachment-file">
+                              <i data-lucide="file-text" style={{width: 16, height: 16}}></i>
+                              <span>{att.name}</span>
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    )}
                     <div className="message-text">
                       {msg.role === 'assistant' ? (
                         <>
                           <MessageContent content={msg.content} onOpenCode={openCodePreview} onCopyCode={copyCode} />
+                          {/* Generated image */}
+                          {msg.generatedImage && (
+                            <div className="generated-image">
+                              <img src={msg.generatedImage} alt="Сгенерированное изображение" />
+                              <a href={msg.generatedImage} target="_blank" rel="noopener noreferrer" className="image-download">
+                                <i data-lucide="download" style={{width: 14, height: 14}}></i>
+                                Открыть
+                              </a>
+                            </div>
+                          )}
                           {msg.sources && msg.sources.length > 0 && (
                             <div className="search-sources">
                               <div className="sources-header">
@@ -1054,16 +1180,40 @@ export default function Home() {
         </div>
 
         <div className="input-area">
+          {/* Attachments preview */}
+          {attachments.length > 0 && (
+            <div className="attachments-preview">
+              {attachments.map((att, idx) => (
+                <div key={idx} className="attachment-item">
+                  {att.type === 'image' && att.preview ? (
+                    <img src={att.preview} alt={att.name} className="attachment-image" />
+                  ) : (
+                    <div className="attachment-file">
+                      <i data-lucide="file-text" style={{width: 20, height: 20}}></i>
+                      <span>{att.name}</span>
+                    </div>
+                  )}
+                  <button className="attachment-remove" onClick={() => removeAttachment(idx)}>
+                    <i data-lucide="x" style={{width: 14, height: 14}}></i>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="input-box">
+            <input type="file" ref={fileInputRef} onChange={handleFileSelect} multiple accept="image/*,.txt,.json,.js,.ts,.tsx,.jsx,.py,.html,.css,.md,.xml,.yaml,.yml,.sql,.sh,.env" style={{display: 'none'}} />
+            <button className="attach-btn" onClick={() => fileInputRef.current?.click()} disabled={isLoading} title="Прикрепить файл">
+              <i data-lucide="paperclip" style={{width: 18, height: 18}}></i>
+            </button>
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isListening ? 'Говорите...' : mode === 'thinking' ? 'Задайте вопрос для анализа...' : mode === 'search' ? 'Что найти?' : 'Напишите сообщение...'}
+              placeholder={isListening ? 'Говорите...' : attachments.length > 0 ? 'Добавьте комментарий...' : mode === 'thinking' ? 'Задайте вопрос для анализа...' : mode === 'search' ? 'Что найти?' : 'Напишите сообщение...'}
               disabled={isLoading || isListening}
             />
-            {input.trim() ? (
+            {(input.trim() || attachments.length > 0) ? (
               <button key="send" className="send-btn" onClick={sendMessage} disabled={isLoading}>
                 <i data-lucide="send" style={{width: 18, height: 18}}></i>
               </button>
