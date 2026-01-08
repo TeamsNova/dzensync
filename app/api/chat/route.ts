@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import Groq from 'groq-sdk'
 
 const groq = new Groq({
@@ -49,11 +49,11 @@ const THINKING_PROMPT = `Ты — Zenith Sync 3.0 в режиме глубоко
 4. Сделай выводы
 
 Формат ответа:
-**Анализ:**
-[твой пошаговый анализ]
+<think>
+[твой пошаговый анализ и размышления]
+</think>
 
-**Вывод:**
-[финальный ответ]
+[финальный ответ пользователю]
 
 Будь максимально логичным и структурированным.`
 
@@ -76,14 +76,13 @@ export async function POST(request: NextRequest) {
     const { message, history, mode } = await request.json()
 
     if (!message) {
-      return NextResponse.json({ error: 'Сообщение пустое' }, { status: 400 })
+      return new Response(JSON.stringify({ error: 'Сообщение пустое' }), { status: 400 })
     }
 
     if (!process.env.GROQ_API_KEY) {
-      return NextResponse.json({ error: 'API ключ не настроен' }, { status: 500 })
+      return new Response(JSON.stringify({ error: 'API ключ не настроен' }), { status: 500 })
     }
 
-    // Выбираем промпт в зависимости от режима
     let systemPrompt = SYSTEM_PROMPT
     if (mode === 'thinking') {
       systemPrompt = THINKING_PROMPT
@@ -100,21 +99,42 @@ export async function POST(request: NextRequest) {
       { role: 'user' as const, content: message },
     ]
 
-    const completion = await groq.chat.completions.create({
+    // Streaming response
+    const stream = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages,
       temperature: mode === 'thinking' ? 0.3 : 0.7,
       max_tokens: mode === 'thinking' ? 2000 : 1000,
+      stream: true,
     })
 
-    const response = completion.choices[0]?.message?.content || 'Не удалось получить ответ'
+    const encoder = new TextEncoder()
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of stream) {
+            const content = chunk.choices[0]?.delta?.content || ''
+            if (content) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`))
+            }
+          }
+          controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+          controller.close()
+        } catch (error) {
+          controller.error(error)
+        }
+      },
+    })
 
-    return NextResponse.json({ response })
+    return new Response(readable, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    })
   } catch (error: unknown) {
     console.error('Groq API error:', error)
-    return NextResponse.json(
-      { error: 'Ошибка генерации. Попробуй позже.' },
-      { status: 500 }
-    )
+    return new Response(JSON.stringify({ error: 'Ошибка генерации. Попробуй позже.' }), { status: 500 })
   }
 }

@@ -33,6 +33,7 @@ export default function Home() {
   const [speakingId, setSpeakingId] = useState<number | null>(null)
   const [isListening, setIsListening] = useState(false)
   const [codePreview, setCodePreview] = useState<CodePreview | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const chatRef = useRef<HTMLDivElement>(null)
   const recognitionRef = useRef<any>(null)
 
@@ -173,6 +174,8 @@ export default function Home() {
     setCodePreview({ code, language })
   }
 
+  const [streamingContent, setStreamingContent] = useState('')
+
   const sendMessage = async () => {
     if (!input.trim() || isLoading) return
     const userMessage = input.trim()
@@ -203,6 +206,7 @@ export default function Home() {
     }))
 
     setIsLoading(true)
+    setStreamingContent('')
 
     try {
       const chatMessages = chats.find(c => c.id === chatId)?.messages || []
@@ -215,14 +219,46 @@ export default function Home() {
           mode
         }),
       })
-      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error('API error')
+      }
+
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let fullContent = ''
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          const chunk = decoder.decode(value)
+          const lines = chunk.split('\n')
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6)
+              if (data === '[DONE]') continue
+              try {
+                const parsed = JSON.parse(data)
+                if (parsed.content) {
+                  fullContent += parsed.content
+                  setStreamingContent(fullContent)
+                }
+              } catch {}
+            }
+          }
+        }
+      }
+
       setChats(prev => prev.map(chat => {
         if (chat.id === chatId) {
           return {
             ...chat,
             messages: [...chat.messages, { 
-              role: data.error ? 'error' : 'assistant', 
-              content: data.error || data.response,
+              role: 'assistant' as const, 
+              content: fullContent || 'Не удалось получить ответ',
               mode
             }]
           }
@@ -241,6 +277,7 @@ export default function Home() {
       }))
     } finally {
       setIsLoading(false)
+      setStreamingContent('')
     }
   }
 
@@ -249,6 +286,39 @@ export default function Home() {
       e.preventDefault()
       sendMessage()
     }
+  }
+
+  // Streaming content with thinking support
+  const StreamingContent = ({ content, isThinking }: { content: string; isThinking: boolean }) => {
+    if (!isThinking) {
+      return <span className="streaming-text">{content}<span className="cursor" /></span>
+    }
+
+    // Parse <think>...</think> tags
+    const thinkMatch = content.match(/<think>([\s\S]*?)(<\/think>|$)/)
+    const afterThink = content.includes('</think>') ? content.split('</think>')[1] : ''
+
+    if (thinkMatch) {
+      const thinkContent = thinkMatch[1]
+      return (
+        <>
+          <div className="thinking-block">
+            <div className="thinking-header">
+              <i data-lucide="brain" style={{width: 14, height: 14}}></i>
+              Размышление
+            </div>
+            <div className="thinking-content">{thinkContent}<span className="cursor" /></div>
+          </div>
+          {afterThink && (
+            <div className="final-answer">
+              {afterThink}<span className="cursor" />
+            </div>
+          )}
+        </>
+      )
+    }
+
+    return <span className="streaming-text">{content}<span className="cursor" /></span>
   }
 
   // Custom code block component
@@ -269,8 +339,33 @@ export default function Home() {
     </div>
   )
 
-  // Message content with custom code parsing
+  // Message content with custom code parsing and thinking support
   const MessageContent = ({ content, onOpenCode, onCopyCode }: { content: string; onOpenCode: (code: string, lang: string) => void; onCopyCode: (code: string) => void }) => {
+    // Check for thinking tags first
+    const thinkMatch = content.match(/<think>([\s\S]*?)<\/think>/)
+    if (thinkMatch) {
+      const thinkContent = thinkMatch[1]
+      const afterThink = content.split('</think>')[1]?.trim() || ''
+      
+      return (
+        <>
+          <div className="thinking-block">
+            <div className="thinking-header">
+              <i data-lucide="brain" style={{width: 14, height: 14}}></i>
+              Размышление
+            </div>
+            <div className="thinking-content">{thinkContent}</div>
+          </div>
+          {afterThink && <MessageContentInner content={afterThink} onOpenCode={onOpenCode} onCopyCode={onCopyCode} />}
+        </>
+      )
+    }
+    
+    return <MessageContentInner content={content} onOpenCode={onOpenCode} onCopyCode={onCopyCode} />
+  }
+
+  // Inner message content for code parsing
+  const MessageContentInner = ({ content, onOpenCode, onCopyCode }: { content: string; onOpenCode: (code: string, lang: string) => void; onCopyCode: (code: string) => void }) => {
     // Try multiple regex patterns to catch code blocks
     const patterns = [
       /```(\w*)\n([\s\S]*?)```/g,           // Standard: ```python\ncode```
@@ -462,6 +557,9 @@ export default function Home() {
               <i data-lucide="search" style={{width: 18, height: 18}}></i>
             </button>
           </div>
+          <button className="settings-btn" onClick={() => setSettingsOpen(true)} title="Настройки">
+            <i data-lucide="settings" style={{width: 20, height: 20}}></i>
+          </button>
         </div>
 
         <div className="chat-area" ref={chatRef}>
@@ -518,7 +616,22 @@ export default function Home() {
                   )}
                 </div>
               ))}
-              {isLoading && (
+              {isLoading && streamingContent && (
+                <div className="message-wrapper assistant">
+                  <div className="message assistant streaming">
+                    {mode === 'thinking' && (
+                      <div className="message-mode">
+                        <i data-lucide="brain" style={{width: 12, height: 12}}></i>
+                        Thinking
+                      </div>
+                    )}
+                    <div className="message-text">
+                      <StreamingContent content={streamingContent} isThinking={mode === 'thinking'} />
+                    </div>
+                  </div>
+                </div>
+              )}
+              {isLoading && !streamingContent && (
                 <div className="typing">
                   {mode !== 'normal' && (
                     <div className="typing-mode">
@@ -574,6 +687,38 @@ export default function Home() {
             <pre><code>{codePreview.code}</code></pre>
           </div>
         </div>
+      )}
+
+      {/* Settings Modal */}
+      {settingsOpen && (
+        <>
+          <div className="settings-overlay" onClick={() => setSettingsOpen(false)} />
+          <div className="settings-modal">
+            <div className="settings-header">
+              <h3>Настройки</h3>
+              <button className="settings-close" onClick={() => setSettingsOpen(false)}>
+                <i data-lucide="x" style={{width: 20, height: 20}}></i>
+              </button>
+            </div>
+            <div className="settings-content">
+              <div className="settings-section">
+                <h4>Память</h4>
+                <p className="settings-info">
+                  Чатов: {chats.length} | Сообщений: {chats.reduce((acc, c) => acc + c.messages.length, 0)}
+                </p>
+                <button className="settings-action danger" onClick={() => { clearAllChats(); setSettingsOpen(false); }}>
+                  <i data-lucide="trash-2" style={{width: 16, height: 16}}></i>
+                  Очистить все чаты
+                </button>
+              </div>
+              <div className="settings-section">
+                <h4>О приложении</h4>
+                <p className="settings-info">Zenith Sync 3.0</p>
+                <p className="settings-info muted">Создано командой Zenith</p>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   )
