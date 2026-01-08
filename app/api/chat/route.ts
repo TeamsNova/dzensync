@@ -22,9 +22,40 @@ const SYSTEM_PROMPT = `Ты Zenith Sync 3.0 — продвинутый AI асс
 
 Ты умный, разбираешься в технологиях, науке, играх, и вообще во всём.`
 
+const THINKING_PROMPT = `Ты Zenith Sync 3.0 в режиме глубокого анализа.
+
+ВАЖНО: Отвечай ТОЛЬКО на русском языке!
+
+Перед ответом ОБЯЗАТЕЛЬНО:
+1. Разбей задачу на части
+2. Проанализируй каждую часть
+3. Рассмотри разные подходы
+4. Сделай выводы
+
+Формат ответа:
+**Анализ:**
+[твой пошаговый анализ]
+
+**Вывод:**
+[финальный ответ]
+
+Будь максимально логичным и структурированным.`
+
+const SEARCH_PROMPT = `Ты Zenith Sync 3.0 с доступом к поиску.
+
+ВАЖНО: Отвечай ТОЛЬКО на русском языке!
+
+Пользователь хочет найти информацию. Ты должен:
+1. Понять что именно ищет пользователь
+2. Дать максимально актуальную информацию которую знаешь
+3. Если не уверен в актуальности — честно скажи
+
+ВАЖНО: Ты НЕ имеешь реального доступа к интернету, но можешь дать информацию из своих знаний.
+Если информация может быть устаревшей — предупреди об этом.`
+
 export async function POST(request: NextRequest) {
   try {
-    const { message, history } = await request.json()
+    const { message, history, mode } = await request.json()
 
     if (!message) {
       return NextResponse.json({ error: 'Сообщение пустое' }, { status: 400 })
@@ -34,8 +65,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'API ключ не настроен' }, { status: 500 })
     }
 
+    // Выбираем промпт в зависимости от режима
+    let systemPrompt = SYSTEM_PROMPT
+    if (mode === 'thinking') {
+      systemPrompt = THINKING_PROMPT
+    } else if (mode === 'search') {
+      systemPrompt = SEARCH_PROMPT
+    }
+
     const messages = [
-      { role: 'system' as const, content: SYSTEM_PROMPT },
+      { role: 'system' as const, content: systemPrompt },
       ...(history || []).map((m: { role: string; content: string }) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
@@ -46,14 +85,14 @@ export async function POST(request: NextRequest) {
     const completion = await groq.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
       messages,
-      temperature: 0.7,
-      max_tokens: 1000,
+      temperature: mode === 'thinking' ? 0.3 : 0.7,
+      max_tokens: mode === 'thinking' ? 2000 : 1000,
     })
 
     const response = completion.choices[0]?.message?.content || 'Не удалось получить ответ'
 
     return NextResponse.json({ response })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Groq API error:', error)
     return NextResponse.json(
       { error: 'Ошибка генерации. Попробуй позже.' },
