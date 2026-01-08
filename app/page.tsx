@@ -23,6 +23,8 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [mode, setMode] = useState<Mode>('normal')
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null)
+  const [speakingId, setSpeakingId] = useState<number | null>(null)
   const chatRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -54,7 +56,16 @@ export default function Home() {
       }
     }, 100)
     return () => clearTimeout(timer)
-  }, [chats, currentChatId, sidebarOpen, mode])
+  }, [chats, currentChatId, sidebarOpen, mode, openMenuId])
+
+  // Close menu on click outside
+  useEffect(() => {
+    const handleClick = () => setOpenMenuId(null)
+    if (openMenuId !== null) {
+      document.addEventListener('click', handleClick)
+      return () => document.removeEventListener('click', handleClick)
+    }
+  }, [openMenuId])
 
   const currentChat = chats.find(c => c.id === currentChatId)
   const messages = currentChat?.messages || []
@@ -84,6 +95,32 @@ export default function Home() {
     setChats([])
     setCurrentChatId(null)
     localStorage.removeItem('zenith-chats')
+  }
+
+  const speakText = (text: string, index: number) => {
+    if ('speechSynthesis' in window) {
+      // Stop if already speaking
+      if (speakingId === index) {
+        window.speechSynthesis.cancel()
+        setSpeakingId(null)
+        return
+      }
+      
+      window.speechSynthesis.cancel()
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.lang = 'ru-RU'
+      utterance.rate = 1
+      utterance.onend = () => setSpeakingId(null)
+      utterance.onerror = () => setSpeakingId(null)
+      setSpeakingId(index)
+      window.speechSynthesis.speak(utterance)
+    }
+    setOpenMenuId(null)
+  }
+
+  const copyText = (text: string) => {
+    navigator.clipboard.writeText(text)
+    setOpenMenuId(null)
   }
 
   const sendMessage = async () => {
@@ -289,7 +326,32 @@ export default function Home() {
                       {msg.mode === 'thinking' ? 'Thinking' : 'Search'}
                     </div>
                   )}
-                  {msg.content}
+                  <div className="message-text">{msg.content}</div>
+                  
+                  {/* Menu for assistant messages */}
+                  {msg.role === 'assistant' && (
+                    <div className="message-actions">
+                      <button 
+                        className="message-menu-btn"
+                        onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === i ? null : i) }}
+                      >
+                        <i data-lucide="more-horizontal" style={{width: 16, height: 16}}></i>
+                      </button>
+                      
+                      {openMenuId === i && (
+                        <div className="message-menu" onClick={(e) => e.stopPropagation()}>
+                          <button onClick={() => speakText(msg.content, i)}>
+                            <i data-lucide={speakingId === i ? "volume-x" : "volume-2"} style={{width: 14, height: 14}}></i>
+                            {speakingId === i ? 'Остановить' : 'Озвучить'}
+                          </button>
+                          <button onClick={() => copyText(msg.content)}>
+                            <i data-lucide="copy" style={{width: 14, height: 14}}></i>
+                            Копировать
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
 
