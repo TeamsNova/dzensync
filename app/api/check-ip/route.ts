@@ -1,10 +1,16 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY! // Нужен service key для записи в таблицы
-)
+function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_KEY
+  
+  if (!url || !key) {
+    throw new Error('Supabase not configured')
+  }
+  
+  return createClient(url, key)
+}
 
 function getClientIP(request: NextRequest): string {
   // Vercel/Cloudflare headers
@@ -28,6 +34,7 @@ function getClientIP(request: NextRequest): string {
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabaseClient()
     const ip = getClientIP(request)
     
     // Проверяем, зарегистрирован ли уже этот IP
@@ -51,6 +58,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabaseClient()
     const { userId } = await request.json()
     const ip = getClientIP(request)
     
