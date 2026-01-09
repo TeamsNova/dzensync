@@ -959,18 +959,23 @@ body {
 .artifact-code-line {
   white-space: nowrap;
   overflow: hidden;
+  opacity: 1;
+}
+
+/* Only animate on first appearance, not during streaming */
+.artifact-card:not(.artifact-streaming) .artifact-code-line {
   opacity: 0;
   animation: artifactType 0.5s ease forwards;
 }
 
-.artifact-code-line:nth-child(1) { animation-delay: 0.2s; }
-.artifact-code-line:nth-child(2) { animation-delay: 0.35s; }
-.artifact-code-line:nth-child(3) { animation-delay: 0.5s; }
-.artifact-code-line:nth-child(4) { animation-delay: 0.65s; }
-.artifact-code-line:nth-child(5) { animation-delay: 0.8s; }
-.artifact-code-line:nth-child(6) { animation-delay: 0.95s; }
-.artifact-code-line:nth-child(7) { animation-delay: 1.1s; }
-.artifact-code-line:nth-child(8) { animation-delay: 1.25s; }
+.artifact-card:not(.artifact-streaming) .artifact-code-line:nth-child(1) { animation-delay: 0.2s; }
+.artifact-card:not(.artifact-streaming) .artifact-code-line:nth-child(2) { animation-delay: 0.35s; }
+.artifact-card:not(.artifact-streaming) .artifact-code-line:nth-child(3) { animation-delay: 0.5s; }
+.artifact-card:not(.artifact-streaming) .artifact-code-line:nth-child(4) { animation-delay: 0.65s; }
+.artifact-card:not(.artifact-streaming) .artifact-code-line:nth-child(5) { animation-delay: 0.8s; }
+.artifact-card:not(.artifact-streaming) .artifact-code-line:nth-child(6) { animation-delay: 0.95s; }
+.artifact-card:not(.artifact-streaming) .artifact-code-line:nth-child(7) { animation-delay: 1.1s; }
+.artifact-card:not(.artifact-streaming) .artifact-code-line:nth-child(8) { animation-delay: 1.25s; }
 
 .artifact-info {
   flex: 1;
@@ -1605,17 +1610,46 @@ body {
 .streaming-text { white-space: pre-wrap; }
 
 .streaming-markdown {
-  display: inline;
+  display: block;
 }
 
 .streaming-markdown p {
-  display: inline;
-  margin: 0;
+  margin: 0 0 12px 0;
 }
 
-.streaming-markdown p:not(:last-child)::after {
-  content: '\A\A';
-  white-space: pre;
+.streaming-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.streaming-markdown h1,
+.streaming-markdown h2,
+.streaming-markdown h3,
+.streaming-markdown h4 {
+  margin: 14px 0 10px 0;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.streaming-markdown strong {
+  font-weight: 600;
+}
+
+.streaming-markdown code {
+  background: var(--accent-glow);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.9em;
+}
+
+.streaming-markdown ul,
+.streaming-markdown ol {
+  margin: 10px 0;
+  padding-left: 22px;
+}
+
+.streaming-markdown li {
+  margin: 6px 0;
 }
 
 .cursor {
