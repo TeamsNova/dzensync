@@ -60,7 +60,7 @@ export default function Home() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [limitModalOpen, setLimitModalOpen] = useState(false)
   const [premiumModalOpen, setPremiumModalOpen] = useState(false)
-  const FREE_LIMIT = 35
+  const FREE_LIMIT = 20
   
   const [chats, setChats] = useState<Chat[]>([])
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
@@ -285,11 +285,29 @@ export default function Home() {
 
     try {
       if (authMode === 'register') {
-        const { error } = await supabase.auth.signUp({
+        // Проверяем IP перед регистрацией
+        const ipCheck = await fetch('/api/check-ip')
+        const ipData = await ipCheck.json()
+        
+        if (ipData.registered) {
+          throw new Error('С вашего IP уже зарегистрирован аккаунт. Один аккаунт на устройство.')
+        }
+        
+        const { data, error } = await supabase.auth.signUp({
           email: authEmail,
           password: authPassword,
         })
         if (error) throw error
+        
+        // Регистрируем IP для нового пользователя
+        if (data.user) {
+          await fetch('/api/check-ip', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: data.user.id })
+          })
+        }
+        
         setAuthError('Проверьте почту для подтверждения!')
       } else {
         const { error } = await supabase.auth.signInWithPassword({

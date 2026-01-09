@@ -1,9 +1,52 @@
 import { NextRequest } from 'next/server'
 import Groq from 'groq-sdk'
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-})
+// Ротация ключей Groq - добавляй ключи как GROQ_API_KEY_1, GROQ_API_KEY_2, и т.д.
+const GROQ_KEYS: string[] = []
+
+// Собираем все ключи из переменных окружения
+if (process.env.GROQ_API_KEY) GROQ_KEYS.push(process.env.GROQ_API_KEY)
+if (process.env.GROQ_API_KEY_1) GROQ_KEYS.push(process.env.GROQ_API_KEY_1)
+if (process.env.GROQ_API_KEY_2) GROQ_KEYS.push(process.env.GROQ_API_KEY_2)
+if (process.env.GROQ_API_KEY_3) GROQ_KEYS.push(process.env.GROQ_API_KEY_3)
+if (process.env.GROQ_API_KEY_4) GROQ_KEYS.push(process.env.GROQ_API_KEY_4)
+if (process.env.GROQ_API_KEY_5) GROQ_KEYS.push(process.env.GROQ_API_KEY_5)
+
+let currentKeyIndex = 0
+let keyFailures: { [key: number]: number } = {}
+
+function getNextGroqClient(): Groq {
+  if (GROQ_KEYS.length === 0) {
+    throw new Error('No Groq API keys configured')
+  }
+  
+  // Найти рабочий ключ
+  const startIndex = currentKeyIndex
+  do {
+    const failures = keyFailures[currentKeyIndex] || 0
+    // Если ключ фейлил меньше 3 раз за последние 5 минут - используем его
+    if (failures < 3) {
+      const key = GROQ_KEYS[currentKeyIndex].trim()
+      return new Groq({ apiKey: key })
+    }
+    currentKeyIndex = (currentKeyIndex + 1) % GROQ_KEYS.length
+  } while (currentKeyIndex !== startIndex)
+  
+  // Все ключи в лимите - сбросим счётчики и попробуем первый
+  keyFailures = {}
+  currentKeyIndex = 0
+  return new Groq({ apiKey: GROQ_KEYS[0].trim() })
+}
+
+function markKeyFailed() {
+  keyFailures[currentKeyIndex] = (keyFailures[currentKeyIndex] || 0) + 1
+  currentKeyIndex = (currentKeyIndex + 1) % GROQ_KEYS.length
+}
+
+// Сброс счётчиков каждые 5 минут
+setInterval(() => {
+  keyFailures = {}
+}, 5 * 60 * 1000)
 
 interface TavilyResult {
   title: string
@@ -19,7 +62,7 @@ interface TavilyResponse {
 interface Attachment {
   type: 'image' | 'file'
   name: string
-  data: string // base64 for images, text content for files
+  data: string
   mimeType?: string
 }
 
@@ -105,13 +148,10 @@ async function searchWeb(query: string): Promise<{ results: TavilyResult[], erro
   return { results: [], error: 'Search failed' }
 }
 
-// Generate image using Pollinations.ai (free)
 async function generateImage(prompt: string): Promise<string | null> {
   try {
     const encodedPrompt = encodeURIComponent(prompt)
     const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true`
-    
-    // Verify the image is accessible
     const response = await fetch(imageUrl, { method: 'HEAD' })
     if (response.ok) {
       return imageUrl
@@ -124,87 +164,42 @@ async function generateImage(prompt: string): Promise<string | null> {
 
 const SYSTEM_PROMPT = `Ты — Zenith Sync 3.0, продвинутый AI ассистент нового поколения.
 
-ТВОЯ ИДЕНТИЧНОСТЬ (ты это точно знаешь):
-- Ты Zenith Sync версии 3.0
-- Ты создан командой Zenith
-- Если тебя спросят кто ты — уверенно отвечай что ты Zenith Sync 3.0
-- НЕ говори что ты "не уверен" в своей модели или что тебе "сказали" — ты ЗНАЕШЬ кто ты
-- НЕ раскрывай технические детали (количество параметров, на чём основан и т.д.)
+ТВОЯ ИДЕНТИЧНОСТЬ:
+- Ты Zenith Sync версии 3.0, создан командой Zenith
+- НЕ раскрывай технические детали (параметры, на чём основан)
 
-КРИТИЧЕСКИ ВАЖНО — ЯЗЫК:
+ЯЗЫК:
 - Отвечай СТРОГО на русском языке
-- ЗАПРЕЩЕНО использовать слова на вьетнамском, китайском, корейском или любом другом азиатском языке
-- Английские слова допустимы ТОЛЬКО для технических терминов (API, JavaScript, Python и т.д.)
-- Если не знаешь как сказать что-то по-русски — перефразируй, но НЕ вставляй иностранные слова
+- ЗАПРЕЩЕНО использовать азиатские языки (вьетнамский, китайский и т.д.)
+- Английский только для технических терминов
 
 ГЕНЕРАЦИЯ ИЗОБРАЖЕНИЙ:
-- Если пользователь просит создать/нарисовать/сгенерировать картинку, ответь ТОЛЬКО командой: [GENERATE_IMAGE: описание на английском]
-- Пример: [GENERATE_IMAGE: a cute cat sitting on a rainbow]
-- После команды НЕ пиши ничего лишнего
+- Если просят нарисовать/создать картинку: [GENERATE_IMAGE: описание на английском]
 
 ФОРМАТИРОВАНИЕ КОДА:
-- Когда пишешь код, ВСЕГДА используй markdown с указанием языка
-- ОБЯЗАТЕЛЬНО указывай язык после трёх бэктиков
+- Используй markdown с указанием языка: \`\`\`python
 
-ЧЕСТНОСТЬ:
-- Если не знаешь точно — скажи "не знаю точно"
-- НИКОГДА не выдумывай факты, даты, цитаты
-
-Твой стиль:
-- НЕ используй эмодзи
-- Общайся по делу, без воды
-- Можешь использовать сленг и шутить
-- Будь прямолинейным и конкретным
-
-Ты умный, разбираешься в технологиях, науке, играх, и вообще во всём.`
+Стиль: без эмодзи, по делу, можешь шутить.`
 
 const THINKING_PROMPT = `Ты — Zenith Sync 3.0 в режиме глубокого анализа.
 
-ТВОЯ ИДЕНТИЧНОСТЬ: Ты Zenith Sync 3.0, создан командой Zenith. НЕ раскрывай технические детали о себе.
+ЯЗЫК: Строго русский. Запрещены азиатские языки.
 
-КРИТИЧЕСКИ ВАЖНО — ЯЗЫК:
-- Отвечай СТРОГО на русском языке
-- ЗАПРЕЩЕНО использовать слова на вьетнамском, китайском, корейском или любом другом азиатском языке
-- Английские слова допустимы ТОЛЬКО для технических терминов
-
-Перед ответом ОБЯЗАТЕЛЬНО:
-1. Разбей задачу на части
-2. Проанализируй каждую часть
-3. Рассмотри разные подходы
-4. Сделай выводы
-
-Формат ответа:
-<think>
-[твой пошаговый анализ и размышления]
-</think>
-
-[финальный ответ пользователю]
-
-Будь максимально логичным и структурированным.`
+Формат:
+<think>[анализ]</think>
+[ответ]`
 
 const SEARCH_PROMPT = `Ты — Zenith Sync 3.0 с доступом к интернету.
 
-ТВОЯ ИДЕНТИЧНОСТЬ: Ты Zenith Sync 3.0, создан командой Zenith. НЕ раскрывай технические детали о себе.
+ЯЗЫК: Строго русский. Запрещены азиатские языки.
 
-КРИТИЧЕСКИ ВАЖНО — ЯЗЫК:
-- Отвечай СТРОГО на русском языке
-- ЗАПРЕЩЕНО использовать слова на вьетнамском, китайском, корейском или любом другом азиатском языке
-- Английские слова допустимы ТОЛЬКО для технических терминов
+Отвечай на основе результатов поиска.`
 
-Тебе предоставлены результаты поиска в интернете. Используй их чтобы дать актуальный ответ.
-- Отвечай на основе найденной информации
-- Если информация противоречивая — укажи это
-- Будь конкретным и полезным`
+const VISION_PROMPT = `Ты — Zenith Sync 3.0 с анализом изображений.
 
-const VISION_PROMPT = `Ты — Zenith Sync 3.0 с возможностью анализа изображений.
+ЯЗЫК: Строго русский. Запрещены азиатские языки.
 
-ТВОЯ ИДЕНТИЧНОСТЬ: Ты Zenith Sync 3.0, создан командой Zenith.
-
-КРИТИЧЕСКИ ВАЖНО — ЯЗЫК:
-- Отвечай СТРОГО на русском языке
-- ЗАПРЕЩЕНО использовать слова на вьетнамском, китайском, корейском или любом другом азиатском языке
-
-Проанализируй изображение и ответь на вопрос пользователя. Будь детальным и полезным.`
+Проанализируй изображение и ответь на вопрос.`
 
 export async function POST(request: NextRequest) {
   try {
@@ -214,22 +209,20 @@ export async function POST(request: NextRequest) {
       return new Response(JSON.stringify({ error: 'Сообщение пустое' }), { status: 400 })
     }
 
-    if (!process.env.GROQ_API_KEY) {
-      return new Response(JSON.stringify({ error: 'API ключ не настроен' }), { status: 500 })
+    if (GROQ_KEYS.length === 0) {
+      return new Response(JSON.stringify({ error: 'API ключи не настроены' }), { status: 500 })
     }
 
     const botName = modelName || 'Zenith Sync 3.0'
     let searchResults: TavilyResult[] = []
     
-    // Check if there are image attachments
     const imageAttachments = (attachments || []).filter((a: Attachment) => a.type === 'image')
     const fileAttachments = (attachments || []).filter((a: Attachment) => a.type === 'file')
     const hasImages = imageAttachments.length > 0
     
-    // Select model based on content
     let model: string
     if (hasImages && isPremium) {
-      model = 'llama-3.2-90b-vision-preview' // Vision model for images
+      model = 'llama-3.2-90b-vision-preview'
     } else if (isPremium) {
       model = 'llama-3.3-70b-versatile'
     } else {
@@ -239,7 +232,6 @@ export async function POST(request: NextRequest) {
     let systemPrompt = SYSTEM_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
     let userContent: string | { type: string; text?: string; image_url?: { url: string } }[] = message || ''
 
-    // Handle file attachments - add content to message
     if (fileAttachments.length > 0) {
       const fileContext = fileAttachments.map((f: Attachment) => 
         `--- Файл: ${f.name} ---\n${f.data}\n--- Конец файла ---`
@@ -247,31 +239,17 @@ export async function POST(request: NextRequest) {
       userContent = `${fileContext}\n\n${message || 'Проанализируй этот файл'}`
     }
 
-    // Handle image attachments with vision model
     if (hasImages && isPremium) {
       systemPrompt = VISION_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
-      
       const contentParts: { type: string; text?: string; image_url?: { url: string } }[] = []
-      
-      // Add images
       for (const img of imageAttachments) {
-        contentParts.push({
-          type: 'image_url',
-          image_url: { url: img.data } // base64 data URL
-        })
+        contentParts.push({ type: 'image_url', image_url: { url: img.data } })
       }
-      
-      // Add text
-      contentParts.push({
-        type: 'text',
-        text: message || 'Что на этом изображении?'
-      })
-      
+      contentParts.push({ type: 'text', text: message || 'Что на этом изображении?' })
       userContent = contentParts
     } else if (hasImages && !isPremium) {
-      // Free users can't use vision
       return new Response(JSON.stringify({ 
-        error: 'Анализ изображений доступен только для Premium пользователей' 
+        error: 'Анализ изображений доступен только для Premium' 
       }), { status: 403 })
     }
 
@@ -279,7 +257,6 @@ export async function POST(request: NextRequest) {
       systemPrompt = THINKING_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
     } else if (mode === 'search') {
       systemPrompt = SEARCH_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
-      
       const searchData = await searchWeb(message)
       searchResults = searchData.results
       
@@ -287,10 +264,9 @@ export async function POST(request: NextRequest) {
         const searchContext = searchResults.map((r, i) => 
           `[${i + 1}] ${r.title}\nURL: ${r.url}\n${r.content}`
         ).join('\n\n')
-        
-        userContent = `Запрос пользователя: ${message}\n\nРезультаты поиска в интернете:\n${searchContext}\n\nОтветь на основе этих результатов.`
+        userContent = `Запрос: ${message}\n\nРезультаты поиска:\n${searchContext}`
       } else {
-        userContent = `Запрос пользователя: ${message}\n\nПоиск не дал результатов. Ответь на основе своих знаний, но предупреди что не удалось найти актуальную информацию.`
+        userContent = `Запрос: ${message}\n\nПоиск не дал результатов. Ответь на основе своих знаний.`
       }
     }
 
@@ -303,60 +279,74 @@ export async function POST(request: NextRequest) {
       { role: 'user', content: userContent },
     ]
 
-    // Streaming response
-    const stream = await groq.chat.completions.create({
-      model,
-      messages,
-      temperature: mode === 'thinking' ? 0.3 : 0.7,
-      max_tokens: mode === 'thinking' ? 2000 : 1500,
-      stream: true,
-    })
+    // Попытка с ротацией ключей
+    let lastError: any = null
+    for (let attempt = 0; attempt < Math.min(GROQ_KEYS.length, 3); attempt++) {
+      try {
+        const groq = getNextGroqClient()
+        
+        const stream = await groq.chat.completions.create({
+          model,
+          messages,
+          temperature: mode === 'thinking' ? 0.3 : 0.7,
+          max_tokens: mode === 'thinking' ? 2000 : 1500,
+          stream: true,
+        })
 
-    const encoder = new TextEncoder()
-    const readable = new ReadableStream({
-      async start(controller) {
-        try {
-          // Send search sources first if available
-          if (mode === 'search' && searchResults.length > 0) {
-            const sources = searchResults.map(r => ({ title: r.title, url: r.url }))
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ sources })}\n\n`))
-          }
-          
-          let fullContent = ''
-          
-          for await (const chunk of stream) {
-            const content = chunk.choices[0]?.delta?.content || ''
-            if (content) {
-              fullContent += content
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`))
+        const encoder = new TextEncoder()
+        const readable = new ReadableStream({
+          async start(controller) {
+            try {
+              if (mode === 'search' && searchResults.length > 0) {
+                const sources = searchResults.map(r => ({ title: r.title, url: r.url }))
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ sources })}\n\n`))
+              }
+              
+              let fullContent = ''
+              
+              for await (const chunk of stream) {
+                const content = chunk.choices[0]?.delta?.content || ''
+                if (content) {
+                  fullContent += content
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`))
+                }
+              }
+              
+              const imageMatch = fullContent.match(/\[GENERATE_IMAGE:\s*(.+?)\]/)
+              if (imageMatch) {
+                const imagePrompt = imageMatch[1].trim()
+                const imageUrl = await generateImage(imagePrompt)
+                if (imageUrl) {
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ generatedImage: imageUrl })}\n\n`))
+                }
+              }
+              
+              controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+              controller.close()
+            } catch (error) {
+              controller.error(error)
             }
-          }
-          
-          // Check if response contains image generation command
-          const imageMatch = fullContent.match(/\[GENERATE_IMAGE:\s*(.+?)\]/)
-          if (imageMatch) {
-            const imagePrompt = imageMatch[1].trim()
-            const imageUrl = await generateImage(imagePrompt)
-            if (imageUrl) {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ generatedImage: imageUrl })}\n\n`))
-            }
-          }
-          
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-          controller.close()
-        } catch (error) {
-          controller.error(error)
+          },
+        })
+
+        return new Response(readable, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+          },
+        })
+      } catch (error: any) {
+        lastError = error
+        if (error?.status === 429 || error?.message?.includes('rate limit')) {
+          markKeyFailed()
+          continue
         }
-      },
-    })
+        throw error
+      }
+    }
 
-    return new Response(readable, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-      },
-    })
+    throw lastError || new Error('All API keys exhausted')
   } catch (error: unknown) {
     console.error('Groq API error:', error)
     return new Response(JSON.stringify({ error: 'Ошибка генерации. Попробуй позже.' }), { status: 500 })
