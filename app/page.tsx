@@ -1487,33 +1487,73 @@ export default function Home() {
       {premiumModalOpen && (
         <>
           <div className="settings-overlay" onClick={() => setPremiumModalOpen(false)} />
-          <div className="settings-modal premium-modal">
-            <div className="settings-header">
-              <h3>Zenith Premium</h3>
-              <button className="settings-close" onClick={() => setPremiumModalOpen(false)}>
-                <i data-lucide="x" style={{width: 20, height: 20}}></i>
-              </button>
-            </div>
-            <div className="settings-content">
-              <div className="premium-icon">
-                <i data-lucide="crown" style={{width: 48, height: 48}}></i>
+          <div className="premium-modal-new">
+            <button className="premium-close" onClick={() => setPremiumModalOpen(false)}>
+              <i data-lucide="x" style={{width: 20, height: 20}}></i>
+            </button>
+            
+            <div className="premium-header">
+              <div className="premium-badge">
+                <i data-lucide="sparkles" style={{width: 16, height: 16}}></i>
+                PREMIUM
               </div>
-              <h4 className="premium-title">Безлимитный доступ</h4>
-              <ul className="premium-features">
-                <li><i data-lucide="check" style={{width: 16, height: 16}}></i> Неограниченные сообщения</li>
-                <li><i data-lucide="check" style={{width: 16, height: 16}}></i> Приоритетная поддержка</li>
-                <li><i data-lucide="check" style={{width: 16, height: 16}}></i> Ранний доступ к новым функциям</li>
-              </ul>
-              <div className="premium-price">
-                <span className="price">500₽</span>
-                <span className="period">/ навсегда</span>
-              </div>
-              <a href="https://t.me/dllsecurity" target="_blank" rel="noopener noreferrer" className="telegram-btn">
-                <i data-lucide="send" style={{width: 18, height: 18}}></i>
-                Написать в Telegram
-              </a>
-              <p className="premium-note">Напишите @dllsecurity для оплаты и активации Premium</p>
+              <h2>Zenith Premium</h2>
+              <p>Разблокируйте полный потенциал AI</p>
             </div>
+
+            <div className="premium-price-card">
+              <div className="premium-price-tag">
+                <span className="premium-currency">₽</span>
+                <span className="premium-amount">500</span>
+                <span className="premium-period">навсегда</span>
+              </div>
+              <div className="premium-save">Одноразовый платёж</div>
+            </div>
+
+            <div className="premium-features-list">
+              <div className="premium-feature-item">
+                <div className="premium-feature-icon">
+                  <i data-lucide="infinity" style={{width: 20, height: 20}}></i>
+                </div>
+                <div className="premium-feature-text">
+                  <span className="premium-feature-title">Безлимитные сообщения</span>
+                  <span className="premium-feature-desc">Никаких ограничений на количество</span>
+                </div>
+              </div>
+              <div className="premium-feature-item">
+                <div className="premium-feature-icon">
+                  <i data-lucide="zap" style={{width: 20, height: 20}}></i>
+                </div>
+                <div className="premium-feature-text">
+                  <span className="premium-feature-title">Summit 3.5 Pro модель</span>
+                  <span className="premium-feature-desc">Доступ к самой мощной модели</span>
+                </div>
+              </div>
+              <div className="premium-feature-item">
+                <div className="premium-feature-icon">
+                  <i data-lucide="microscope" style={{width: 20, height: 20}}></i>
+                </div>
+                <div className="premium-feature-text">
+                  <span className="premium-feature-title">Безлимитный Research</span>
+                  <span className="premium-feature-desc">Глубокий анализ без ограничений</span>
+                </div>
+              </div>
+              <div className="premium-feature-item">
+                <div className="premium-feature-icon">
+                  <i data-lucide="headphones" style={{width: 20, height: 20}}></i>
+                </div>
+                <div className="premium-feature-text">
+                  <span className="premium-feature-title">Приоритетная поддержка</span>
+                  <span className="premium-feature-desc">Быстрые ответы на ваши вопросы</span>
+                </div>
+              </div>
+            </div>
+
+            <a href="https://t.me/dllsecurity" target="_blank" rel="noopener noreferrer" className="premium-buy-btn">
+              <i data-lucide="send" style={{width: 20, height: 20}}></i>
+              Написать в Telegram
+            </a>
+            <p className="premium-contact">@dllsecurity — оплата и активация</p>
           </div>
         </>
       )}
