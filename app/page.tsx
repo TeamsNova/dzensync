@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useMemo, memo } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { supabase } from '../lib/supabase'
 
@@ -705,123 +705,10 @@ export default function Home() {
   }
 
   // Streaming content with thinking and artifact support
-  // Track artifact state to prevent flickering - stable artifact that doesn't re-render
-  const [streamingArtifact, setStreamingArtifact] = useState<{
-    visible: boolean
-    language: string
-    fileName: string
-    isComplete: boolean
-  } | null>(null)
-  const artifactCodeRef = useRef<string>('')
-  const beforeCodeRef = useRef<string>('')
-  const afterCodeRef = useRef<string>('')
-
-  // Detect code block start and show artifact once
-  useEffect(() => {
-    if (!streamingContent) return
-    
-    const codeMatch = streamingContent.match(/```(\w*)\n?([\s\S]*?)($|```)/)
-    
-    if (codeMatch && !streamingArtifact?.visible) {
-      const language = codeMatch[1] || ''
-      const fileName = language ? `code.${language === 'javascript' ? 'js' : language === 'typescript' ? 'ts' : language === 'python' ? 'py' : language}` : 'code.txt'
-      const beforeCode = streamingContent.slice(0, streamingContent.indexOf('```')).trim()
-      beforeCodeRef.current = beforeCode
-      
-      setStreamingArtifact({
-        visible: true,
-        language,
-        fileName,
-        isComplete: false
-      })
-    }
-    
-    if (codeMatch) {
-      artifactCodeRef.current = codeMatch[2] || ''
-      
-      // Check if code block is complete
-      const isComplete = streamingContent.includes('```', streamingContent.indexOf('```') + 3)
-      if (isComplete) {
-        afterCodeRef.current = streamingContent.slice(streamingContent.lastIndexOf('```') + 3).trim()
-        if (streamingArtifact && !streamingArtifact.isComplete) {
-          setStreamingArtifact(prev => prev ? { ...prev, isComplete: true } : null)
-        }
-      }
-    }
-  }, [streamingContent, streamingArtifact?.visible, streamingArtifact?.isComplete])
-
-  // Reset artifact state when streaming ends
-  useEffect(() => {
-    if (!isLoading) {
-      setStreamingArtifact(null)
-      artifactCodeRef.current = ''
-      beforeCodeRef.current = ''
-      afterCodeRef.current = ''
-    }
-  }, [isLoading])
-
-  // Memoized artifact - only re-renders when isComplete changes
-  const memoizedArtifact = useMemo(() => {
-    if (!streamingArtifact?.visible) return null
-    
-    return (
-      <div 
-        className="artifact-card artifact-streaming" 
-        onClick={() => openCodePreview(artifactCodeRef.current, streamingArtifact.language)}
-      >
-        <div className="artifact-phone">
-          <div className="artifact-phone-screen">
-            <div className="artifact-phone-dots">
-              <span></span><span></span><span></span>
-            </div>
-            <div className="artifact-phone-code">
-              <div className="artifact-code-line">// {streamingArtifact.fileName}</div>
-              <div className="artifact-code-line">// Генерация...</div>
-            </div>
-          </div>
-        </div>
-        <div className="artifact-info">
-          <div className="artifact-title">{streamingArtifact.fileName}</div>
-          <div className="artifact-subtitle">
-            {streamingArtifact.isComplete ? 'Нажмите чтобы открыть' : 'Генерация...'}
-          </div>
-        </div>
-        {!streamingArtifact.isComplete && (
-          <div className="artifact-loading">
-            <span></span><span></span><span></span>
-          </div>
-        )}
-        {streamingArtifact.isComplete && (
-          <div className="artifact-arrow">
-            <i data-lucide="chevron-right" style={{width: 20, height: 20}}></i>
-          </div>
-        )}
-      </div>
-    )
-  }, [streamingArtifact?.visible, streamingArtifact?.isComplete, streamingArtifact?.fileName, streamingArtifact?.language])
-
+  // Streaming content - simple, no artifact during streaming
   const StreamingContent = ({ content, isThinking }: { content: string; isThinking: boolean }) => {
-    // If artifact is showing, only render text before/after code (artifact rendered separately)
-    if (streamingArtifact?.visible) {
-      return (
-        <>
-          {beforeCodeRef.current && (
-            <div className="streaming-markdown">
-              <ReactMarkdown>{beforeCodeRef.current}</ReactMarkdown>
-            </div>
-          )}
-          {memoizedArtifact}
-          {streamingArtifact.isComplete && afterCodeRef.current && (
-            <div className="streaming-markdown">
-              <ReactMarkdown>{afterCodeRef.current}</ReactMarkdown>
-            </div>
-          )}
-          <span className="cursor" />
-        </>
-      )
-    }
-    
     if (!isThinking) {
+      // Just show markdown text with cursor, no artifact during streaming
       return (
         <div className="streaming-markdown">
           <ReactMarkdown>{content}</ReactMarkdown>
@@ -847,7 +734,8 @@ export default function Home() {
           </div>
           {afterThink && (
             <div className="final-answer">
-              {afterThink}<span className="cursor" />
+              <ReactMarkdown>{afterThink}</ReactMarkdown>
+              <span className="cursor" />
             </div>
           )}
         </>
