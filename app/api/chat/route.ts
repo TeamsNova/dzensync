@@ -201,6 +201,28 @@ const VISION_PROMPT = `Ты — Zenith Sync 3.0 с анализом изобра
 
 Проанализируй изображение и ответь на вопрос.`
 
+const RESEARCH_PROMPT = `Ты — Zenith Sync 3.0 в режиме глубокого исследования.
+
+ТВОЯ ЗАДАЧА: Провести максимально глубокий анализ вопроса.
+
+ЯЗЫК: Строго русский. Запрещены азиатские языки.
+
+ПРОЦЕСС:
+1. Разбей проблему на составляющие
+2. Рассмотри все возможные подходы
+3. Проанализируй плюсы и минусы каждого
+4. Приведи примеры и доказательства
+5. Сделай обоснованные выводы
+
+ФОРМАТ ОТВЕТА:
+<think>
+[Твой детальный пошаговый анализ. Думай вслух, рассуждай, сомневайся, проверяй себя.]
+</think>
+
+[Финальный структурированный ответ с выводами]
+
+Будь максимально тщательным. Качество важнее скорости.`
+
 export async function POST(request: NextRequest) {
   try {
     const { message, history, mode, isPremium, modelName, attachments } = await request.json()
@@ -221,7 +243,9 @@ export async function POST(request: NextRequest) {
     const hasImages = imageAttachments.length > 0
     
     let model: string
-    if (hasImages && isPremium) {
+    if (mode === 'research') {
+      model = 'deepseek-r1-distill-llama-70b' // DeepSeek для глубокого анализа
+    } else if (hasImages && isPremium) {
       model = 'llama-3.2-90b-vision-preview'
     } else if (isPremium) {
       model = 'llama-3.3-70b-versatile'
@@ -253,7 +277,9 @@ export async function POST(request: NextRequest) {
       }), { status: 403 })
     }
 
-    if (mode === 'thinking') {
+    if (mode === 'research') {
+      systemPrompt = RESEARCH_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
+    } else if (mode === 'thinking') {
       systemPrompt = THINKING_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
     } else if (mode === 'search') {
       systemPrompt = SEARCH_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
@@ -288,8 +314,8 @@ export async function POST(request: NextRequest) {
         const stream = await groq.chat.completions.create({
           model,
           messages,
-          temperature: mode === 'thinking' ? 0.3 : 0.7,
-          max_tokens: mode === 'thinking' ? 2000 : 1500,
+          temperature: (mode === 'thinking' || mode === 'research') ? 0.3 : 0.7,
+          max_tokens: mode === 'research' ? 4000 : (mode === 'thinking' ? 2000 : 1500),
           stream: true,
         })
 

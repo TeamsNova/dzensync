@@ -14,12 +14,13 @@ interface Profile {
   premium_until: string | null
   messages_today: number
   last_message_date: string
+  research_today: number
 }
 
 interface Message {
   role: 'user' | 'assistant' | 'error'
   content: string
-  mode?: 'normal' | 'thinking' | 'search'
+  mode?: 'normal' | 'thinking' | 'search' | 'research'
   sources?: { title: string; url: string }[]
   attachments?: Attachment[]
   generatedImage?: string
@@ -44,7 +45,7 @@ interface Attachment {
   preview?: string
 }
 
-type Mode = 'normal' | 'thinking' | 'search'
+type Mode = 'normal' | 'thinking' | 'search' | 'research'
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null)
@@ -61,6 +62,7 @@ export default function Home() {
   const [limitModalOpen, setLimitModalOpen] = useState(false)
   const [premiumModalOpen, setPremiumModalOpen] = useState(false)
   const FREE_LIMIT = 20
+  const RESEARCH_LIMIT = 5
   
   const [chats, setChats] = useState<Chat[]>([])
   const [currentChatId, setCurrentChatId] = useState<string | null>(null)
@@ -165,7 +167,7 @@ export default function Home() {
     
     const { data, error } = await supabase
       .from('profiles')
-      .select('is_premium, premium_until, messages_today, last_message_date')
+      .select('is_premium, premium_until, messages_today, last_message_date, research_today')
       .eq('id', user.id)
       .single()
     
@@ -175,10 +177,10 @@ export default function Home() {
       const today = new Date().toISOString().split('T')[0]
       const { data: newProfile } = await supabase
         .from('profiles')
-        .insert({ id: user.id, is_premium: false, premium_until: null, messages_today: 0, last_message_date: today })
+        .insert({ id: user.id, is_premium: false, premium_until: null, messages_today: 0, research_today: 0, last_message_date: today })
         .select()
         .single()
-      if (newProfile) setProfile(newProfile)
+      if (newProfile) setProfile({ ...newProfile, research_today: 0 })
     } else {
       // Check if premium expired
       let isPremiumActive = data.is_premium
@@ -199,35 +201,48 @@ export default function Home() {
       if (data.last_message_date !== today) {
         const { data: updated } = await supabase
           .from('profiles')
-          .update({ messages_today: 0, last_message_date: today })
+          .update({ messages_today: 0, research_today: 0, last_message_date: today })
           .eq('id', user.id)
           .select()
           .single()
-        setProfile(updated ? { ...updated, is_premium: isPremiumActive } : { ...data, messages_today: 0, last_message_date: today, is_premium: isPremiumActive })
+        setProfile(updated ? { ...updated, is_premium: isPremiumActive, research_today: 0 } : { ...data, messages_today: 0, research_today: 0, last_message_date: today, is_premium: isPremiumActive })
       } else {
-        setProfile({ ...data, is_premium: isPremiumActive })
+        setProfile({ ...data, is_premium: isPremiumActive, research_today: data.research_today || 0 })
       }
     }
   }
 
-  const incrementMessageCount = async () => {
+  const incrementMessageCount = async (isResearch: boolean = false) => {
     if (!user || !profile) return
     
     const today = new Date().toISOString().split('T')[0]
     const newCount = profile.messages_today + 1
+    const newResearchCount = isResearch ? (profile.research_today || 0) + 1 : (profile.research_today || 0)
     
     await supabase
       .from('profiles')
-      .update({ messages_today: newCount, last_message_date: today })
+      .update({ messages_today: newCount, research_today: newResearchCount, last_message_date: today })
       .eq('id', user.id)
     
-    setProfile({ ...profile, messages_today: newCount, last_message_date: today })
+    setProfile({ ...profile, messages_today: newCount, research_today: newResearchCount, last_message_date: today })
   }
 
   const canSendMessage = () => {
     if (!profile) return false
     if (profile.is_premium) return true
     return profile.messages_today < FREE_LIMIT
+  }
+
+  const canUseResearch = () => {
+    if (!profile) return false
+    if (profile.is_premium) return true
+    return (profile.research_today || 0) < RESEARCH_LIMIT
+  }
+
+  const researchLeft = () => {
+    if (!profile) return 0
+    if (profile.is_premium) return Infinity
+    return Math.max(0, RESEARCH_LIMIT - (profile.research_today || 0))
   }
 
   const messagesLeft = () => {
@@ -505,6 +520,12 @@ export default function Home() {
       return
     }
     
+    // Check research limit for free users
+    if (mode === 'research' && !canUseResearch()) {
+      setLimitModalOpen(true)
+      return
+    }
+    
     const userMessage = input.trim()
     const currentAttachments = [...attachments]
     setInput('')
@@ -629,7 +650,7 @@ export default function Home() {
       }))
       
       // Increment message count after successful response
-      await incrementMessageCount()
+      await incrementMessageCount(mode === 'research')
     } catch {
       setChats(prev => prev.map(chat => {
         if (chat.id === chatId) {
@@ -1039,6 +1060,9 @@ export default function Home() {
             <button className={`mode-btn ${mode === 'search' ? 'active' : ''}`} onClick={() => setMode('search')} title="Режим поиска">
               <i data-lucide="search" style={{width: 18, height: 18}}></i>
             </button>
+            <button className={`mode-btn research ${mode === 'research' ? 'active' : ''}`} onClick={() => setMode('research')} title={`Глубокое исследование${!profile?.is_premium ? ` (${researchLeft()}/${RESEARCH_LIMIT})` : ''}`}>
+              <i data-lucide="microscope" style={{width: 18, height: 18}}></i>
+            </button>
           </div>
           <button className="theme-toggle" onClick={toggleTheme} title={theme === 'light' ? 'Тёмная тема' : 'Светлая тема'}>
             <i data-lucide={theme === 'light' ? 'moon' : 'sun'} style={{width: 20, height: 20}}></i>
@@ -1060,6 +1084,7 @@ export default function Home() {
                 <div className="mode-card"><i data-lucide="message-circle" style={{width: 20, height: 20}}></i><span>Обычный</span></div>
                 <div className="mode-card"><i data-lucide="brain" style={{width: 20, height: 20}}></i><span>Thinking</span></div>
                 <div className="mode-card"><i data-lucide="search" style={{width: 20, height: 20}}></i><span>Search</span></div>
+                <div className="mode-card research"><i data-lucide="microscope" style={{width: 20, height: 20}}></i><span>Research</span></div>
               </div>
             </div>
           ) : (
@@ -1068,9 +1093,9 @@ export default function Home() {
                 <div key={i} className={`message-wrapper ${msg.role}`}>
                   <div className={`message ${msg.role}`}>
                     {msg.mode && msg.mode !== 'normal' && msg.role === 'assistant' && (
-                      <div className="message-mode">
-                        <i data-lucide={msg.mode === 'thinking' ? 'brain' : 'search'} style={{width: 12, height: 12}}></i>
-                        {msg.mode === 'thinking' ? 'Thinking' : 'Search'}
+                      <div className={`message-mode ${msg.mode === 'research' ? 'research' : ''}`}>
+                        <i data-lucide={msg.mode === 'thinking' ? 'brain' : msg.mode === 'research' ? 'microscope' : 'search'} style={{width: 12, height: 12}}></i>
+                        {msg.mode === 'thinking' ? 'Thinking' : msg.mode === 'research' ? 'Deep Research' : 'Search'}
                       </div>
                     )}
                     {/* User attachments */}
@@ -1160,8 +1185,14 @@ export default function Home() {
                         Search
                       </div>
                     )}
+                    {mode === 'research' && (
+                      <div className="message-mode research">
+                        <i data-lucide="microscope" style={{width: 12, height: 12}}></i>
+                        Deep Research
+                      </div>
+                    )}
                     <div className="message-text">
-                      <StreamingContent content={streamingContent} isThinking={mode === 'thinking'} />
+                      <StreamingContent content={streamingContent} isThinking={mode === 'thinking' || mode === 'research'} />
                       {streamingSources.length > 0 && (
                         <div className="search-sources">
                           <div className="sources-header">
@@ -1185,9 +1216,9 @@ export default function Home() {
               {isLoading && !streamingContent && (
                 <div className="typing">
                   {mode !== 'normal' && (
-                    <div className="typing-mode">
-                      <i data-lucide={mode === 'thinking' ? 'brain' : 'search'} style={{width: 14, height: 14}}></i>
-                      {mode === 'thinking' ? 'Думаю...' : 'Ищу...'}
+                    <div className={`typing-mode ${mode === 'research' ? 'research' : ''}`}>
+                      <i data-lucide={mode === 'thinking' ? 'brain' : mode === 'research' ? 'microscope' : 'search'} style={{width: 14, height: 14}}></i>
+                      {mode === 'thinking' ? 'Думаю...' : mode === 'research' ? 'Исследую...' : 'Ищу...'}
                     </div>
                   )}
                   <div className="typing-dots"><span /><span /><span /></div>
