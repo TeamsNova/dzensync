@@ -2271,6 +2271,22 @@ button [data-lucide],
 button {
   position: relative;
   z-index: 1;
+  cursor: pointer;
+}
+
+/* Settings modal buttons fix */
+.settings-modal button,
+.settings-modal .settings-action,
+.settings-modal .settings-close,
+.settings-modal .upgrade-btn {
+  position: relative;
+  z-index: 210;
+  cursor: pointer;
+}
+
+.settings-modal .settings-content {
+  position: relative;
+  z-index: 205;
 }
 
 
