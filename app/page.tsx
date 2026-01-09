@@ -726,11 +726,12 @@ export default function Home() {
 
   // Message content with custom code parsing and thinking support
   const MessageContent = ({ content, onOpenCode, onCopyCode }: { content: string; onOpenCode: (code: string, lang: string) => void; onCopyCode: (code: string) => void }) => {
-    // Check for thinking tags first
-    const thinkMatch = content.match(/<think>([\s\S]*?)<\/think>/)
+    // Check for thinking tags first (support both closed and unclosed tags)
+    const thinkMatch = content.match(/<think>([\s\S]*?)(<\/think>|$)/)
     if (thinkMatch) {
       const thinkContent = thinkMatch[1]
-      const afterThink = content.split('</think>')[1]?.trim() || ''
+      const hasClosingTag = content.includes('</think>')
+      const afterThink = hasClosingTag ? content.split('</think>')[1]?.trim() || '' : ''
       
       return (
         <>
