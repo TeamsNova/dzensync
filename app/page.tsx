@@ -673,8 +673,59 @@ export default function Home() {
     }
   }
 
-  // Streaming content with thinking support
+  // Streaming content with thinking and artifact support
   const StreamingContent = ({ content, isThinking }: { content: string; isThinking: boolean }) => {
+    // Check for code blocks during streaming - show artifact immediately
+    const codeMatch = content.match(/```(\w*)\n?([\s\S]*?)($|```)/)
+    
+    if (codeMatch) {
+      const language = codeMatch[1] || ''
+      const codeContent = codeMatch[2] || ''
+      const isComplete = content.includes('```', content.indexOf('```') + 3)
+      const beforeCode = content.slice(0, content.indexOf('```')).trim()
+      const afterCode = isComplete ? content.slice(content.lastIndexOf('```') + 3).trim() : ''
+      const codeLines = codeContent.split('\n').slice(0, 8)
+      const fileName = language ? `code.${language === 'javascript' ? 'js' : language === 'typescript' ? 'ts' : language === 'python' ? 'py' : language}` : 'code.txt'
+      
+      return (
+        <>
+          {beforeCode && <span className="streaming-text">{beforeCode}</span>}
+          <div className="artifact-card artifact-streaming" onClick={() => openCodePreview(codeContent, language)}>
+            <div className="artifact-phone">
+              <div className="artifact-phone-screen">
+                <div className="artifact-phone-dots">
+                  <span></span><span></span><span></span>
+                </div>
+                <div className="artifact-phone-code">
+                  {codeLines.map((line, lineIdx) => (
+                    <div key={lineIdx} className="artifact-code-line">{line || ' '}</div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="artifact-info">
+              <div className="artifact-title">{fileName}</div>
+              <div className="artifact-subtitle">
+                {isComplete ? 'Нажмите чтобы открыть' : 'Генерация...'}
+              </div>
+            </div>
+            {!isComplete && (
+              <div className="artifact-loading">
+                <span></span><span></span><span></span>
+              </div>
+            )}
+            {isComplete && (
+              <div className="artifact-arrow">
+                <i data-lucide="chevron-right" style={{width: 20, height: 20}}></i>
+              </div>
+            )}
+          </div>
+          {afterCode && <span className="streaming-text">{afterCode}<span className="cursor" /></span>}
+          {!afterCode && !isComplete && <span className="cursor" />}
+        </>
+      )
+    }
+    
     if (!isThinking) {
       return <span className="streaming-text">{content}<span className="cursor" /></span>
     }
