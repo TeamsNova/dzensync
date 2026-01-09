@@ -1768,6 +1768,21 @@ body {
 
 /* ==================== RESPONSIVE - MOBILE ==================== */
 @media (max-width: 768px) {
+  /* Fix scrolling on mobile */
+  body {
+    overflow: auto;
+    overflow-x: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .app {
+    height: 100%;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+  
   /* Sidebar */
   .sidebar {
     position: fixed;
@@ -1786,7 +1801,8 @@ body {
   /* Topbar */
   .topbar {
     padding: 10px 12px;
-    gap: 8px;
+    gap: 6px;
+    flex-wrap: wrap;
   }
   
   .toggle-sidebar-btn,
@@ -1794,6 +1810,7 @@ body {
   .settings-btn {
     width: 36px;
     height: 36px;
+    min-width: 36px;
     border-radius: 8px;
   }
   
@@ -1804,21 +1821,42 @@ body {
   
   .model-name {
     font-size: 0.5rem;
-    max-width: 120px;
+    max-width: 80px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   
   .model-menu {
     min-width: 260px;
-    left: -50px;
+    left: 0;
+    right: auto;
   }
   
-  .mode-selector { display: none; }
+  /* Mode selector - SHOW on mobile but compact */
+  .mode-selector {
+    display: flex;
+    padding: 3px;
+    gap: 2px;
+    border-radius: 10px;
+    order: 10;
+    flex-shrink: 0;
+  }
+  
+  .mode-btn {
+    padding: 8px 10px;
+    border-radius: 8px;
+  }
+  
+  .mode-btn i {
+    width: 16px;
+    height: 16px;
+  }
   
   /* Chat Area */
   .chat-area { 
-    padding: 12px; 
+    padding: 12px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   
   .messages {
@@ -1865,6 +1903,7 @@ body {
   
   .code-block pre {
     padding: 12px;
+    overflow-x: auto;
   }
   
   .code-block code {
@@ -1891,19 +1930,28 @@ body {
   
   .input-box input {
     padding: 10px 12px;
-    font-size: 0.95rem;
+    font-size: 16px; /* Prevents iOS zoom */
   }
   
   .send-btn,
   .mic-btn {
     width: 42px;
     height: 42px;
+    min-width: 42px;
+    min-height: 42px;
     border-radius: 12px;
+  }
+  
+  .attach-btn {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
   }
   
   /* Welcome */
   .welcome {
     padding: 30px 16px;
+    overflow-y: auto;
   }
   
   .welcome-icon {
@@ -1923,6 +1971,7 @@ body {
   
   .mode-info {
     gap: 8px;
+    flex-wrap: wrap;
   }
   
   .mode-card {
@@ -1941,37 +1990,47 @@ body {
     z-index: 150;
   }
   
-  /* Auth Screen */
+  /* ==================== AUTH SCREEN MOBILE ==================== */
   .auth-screen { 
-    flex-direction: column; 
+    flex-direction: column;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overflow-y: auto;
   }
   
   .auth-left { 
-    padding: 30px 20px; 
+    padding: 24px 20px;
     min-height: auto;
+    flex: 0 0 auto;
+  }
+  
+  .auth-left-content {
+    max-width: 100%;
   }
   
   .auth-logo {
-    margin-bottom: 24px;
+    margin-bottom: 16px;
   }
   
   .auth-logo-icon {
     width: 40px;
     height: 40px;
+    border-radius: 10px;
   }
   
   .auth-logo-text {
-    font-size: 0.8rem;
+    font-size: 0.75rem;
   }
   
   .auth-left h1 { 
-    font-size: 0.9rem; 
-    line-height: 1.8;
+    font-size: 0.85rem; 
+    line-height: 1.7;
+    margin-bottom: 12px;
   }
   
   .auth-left p {
-    font-size: 0.95rem;
-    display: none;
+    font-size: 0.9rem;
+    line-height: 1.5;
   }
   
   .auth-footer {
@@ -1979,25 +2038,63 @@ body {
   }
   
   .auth-right { 
-    padding: 20px; 
-    flex: 2;
+    padding: 20px;
+    flex: 1 1 auto;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   }
   
   .auth-box { 
-    padding: 28px 20px;
-    border-radius: 20px;
+    padding: 24px 20px;
+    border-radius: 18px;
+    width: 100%;
+    max-width: 400px;
+  }
+  
+  .auth-header {
+    margin-bottom: 24px;
   }
   
   .auth-header h2 {
-    font-size: 1.3rem;
+    font-size: 1.25rem;
+  }
+  
+  .auth-header p {
+    font-size: 0.9rem;
+  }
+  
+  .auth-form {
+    gap: 16px;
+  }
+  
+  .auth-field label {
+    font-size: 0.85rem;
   }
   
   .auth-form input {
     padding: 12px 14px;
+    font-size: 16px; /* Prevents iOS zoom */
+    border-radius: 10px;
   }
   
   .auth-submit {
-    padding: 12px;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 0.95rem;
+  }
+  
+  .auth-error,
+  .auth-success {
+    padding: 10px 14px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+  }
+  
+  .auth-switch {
+    margin-top: 20px;
+    font-size: 0.9rem;
   }
   
   /* Settings Modal */
@@ -2005,6 +2102,8 @@ body {
     width: 95%;
     max-width: 360px;
     border-radius: 16px;
+    max-height: 90vh;
+    overflow-y: auto;
   }
   
   .settings-header {
@@ -2049,6 +2148,46 @@ body {
     padding: 14px 16px;
     border-radius: 14px;
   }
+  
+  /* Attachments */
+  .attachments-preview {
+    gap: 8px;
+  }
+  
+  .attachment-image {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .attachment-file {
+    padding: 10px 12px;
+    font-size: 0.8rem;
+  }
+  
+  .attachment-file span {
+    max-width: 80px;
+  }
+  
+  /* Generated images */
+  .generated-image img {
+    max-width: 100%;
+  }
+  
+  /* Limit/Premium modals */
+  .limit-icon,
+  .premium-icon {
+    width: 70px;
+    height: 70px;
+  }
+  
+  .limit-text {
+    font-size: 0.95rem;
+  }
+  
+  .premium-feature {
+    padding: 10px 0;
+    font-size: 0.9rem;
+  }
 }
 
 /* Extra small phones */
@@ -2061,12 +2200,33 @@ body {
     padding: 8px 10px;
   }
   
+  .model-selector-wrapper {
+    flex: 0 1 auto;
+  }
+  
+  .mode-selector {
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .mode-btn {
+    padding: 7px 8px;
+  }
+  
   .message {
     max-width: 95%;
   }
   
+  .auth-left h1 {
+    font-size: 0.75rem;
+  }
+  
   .auth-box {
-    padding: 24px 16px;
+    padding: 20px 16px;
+  }
+  
+  .auth-header h2 {
+    font-size: 1.15rem;
   }
 }
 
@@ -2141,10 +2301,58 @@ input:focus-visible {
   /* Prevent iOS bounce scroll issues */
   .chat-area {
     -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
   
   /* Fix for iOS keyboard */
-  .input-box input {
+  .input-box input,
+  .auth-form input {
     font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+  
+  /* Fix auth screen scrolling on iOS */
+  .auth-screen {
+    min-height: -webkit-fill-available;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Fix main app scrolling */
+  .app {
+    min-height: -webkit-fill-available;
+  }
+}
+
+/* Landscape mode fixes */
+@media (max-height: 500px) and (orientation: landscape) {
+  .auth-left {
+    padding: 16px 20px;
+  }
+  
+  .auth-left h1 {
+    font-size: 0.7rem;
+    margin-bottom: 8px;
+  }
+  
+  .auth-logo {
+    margin-bottom: 12px;
+  }
+  
+  .auth-box {
+    padding: 16px;
+  }
+  
+  .auth-form {
+    gap: 12px;
+  }
+  
+  .welcome {
+    padding: 16px;
+  }
+  
+  .welcome-icon {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 12px;
   }
 }
