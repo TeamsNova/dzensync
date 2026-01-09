@@ -705,72 +705,94 @@ export default function Home() {
   }
 
   // Streaming content with thinking and artifact support
-  // Track artifact state to prevent flickering
-  const [artifactShown, setArtifactShown] = useState(false)
+  // Track artifact state to prevent flickering - stable artifact that doesn't re-render
+  const [streamingArtifact, setStreamingArtifact] = useState<{
+    visible: boolean
+    language: string
+    fileName: string
+    isComplete: boolean
+  } | null>(null)
   const artifactCodeRef = useRef<string>('')
-  const artifactLangRef = useRef<string>('')
+  const beforeCodeRef = useRef<string>('')
+
+  // Detect code block start and show artifact once
+  useEffect(() => {
+    if (!streamingContent) return
+    
+    const codeMatch = streamingContent.match(/```(\w*)\n?([\s\S]*?)($|```)/)
+    
+    if (codeMatch && !streamingArtifact?.visible) {
+      const language = codeMatch[1] || ''
+      const fileName = language ? `code.${language === 'javascript' ? 'js' : language === 'typescript' ? 'ts' : language === 'python' ? 'py' : language}` : 'code.txt'
+      const beforeCode = streamingContent.slice(0, streamingContent.indexOf('```')).trim()
+      beforeCodeRef.current = beforeCode
+      
+      setStreamingArtifact({
+        visible: true,
+        language,
+        fileName,
+        isComplete: false
+      })
+    }
+    
+    if (codeMatch) {
+      artifactCodeRef.current = codeMatch[2] || ''
+      
+      // Check if code block is complete
+      const isComplete = streamingContent.includes('```', streamingContent.indexOf('```') + 3)
+      if (isComplete && streamingArtifact && !streamingArtifact.isComplete) {
+        setStreamingArtifact(prev => prev ? { ...prev, isComplete: true } : null)
+      }
+    }
+  }, [streamingContent, streamingArtifact?.visible, streamingArtifact?.isComplete])
 
   // Reset artifact state when streaming ends
   useEffect(() => {
     if (!isLoading) {
-      setArtifactShown(false)
+      setStreamingArtifact(null)
       artifactCodeRef.current = ''
-      artifactLangRef.current = ''
+      beforeCodeRef.current = ''
     }
   }, [isLoading])
 
   const StreamingContent = ({ content, isThinking }: { content: string; isThinking: boolean }) => {
-    // Check for code blocks during streaming - show artifact immediately
-    const codeMatch = content.match(/```(\w*)\n?([\s\S]*?)($|```)/)
-    
-    if (codeMatch) {
-      const language = codeMatch[1] || ''
-      const codeContent = codeMatch[2] || ''
-      const isComplete = content.includes('```', content.indexOf('```') + 3)
-      const beforeCode = content.slice(0, content.indexOf('```')).trim()
-      const afterCode = isComplete ? content.slice(content.lastIndexOf('```') + 3).trim() : ''
-      
-      // Store code for artifact (only update if more content)
-      if (codeContent.length > artifactCodeRef.current.length) {
-        artifactCodeRef.current = codeContent
-        artifactLangRef.current = language
-      }
-      
-      const codeLines = artifactCodeRef.current.split('\n').slice(0, 8)
-      const fileName = language ? `code.${language === 'javascript' ? 'js' : language === 'typescript' ? 'ts' : language === 'python' ? 'py' : language}` : 'code.txt'
+    // If artifact is showing, render simplified view
+    if (streamingArtifact?.visible) {
+      const afterCode = streamingArtifact.isComplete 
+        ? content.slice(content.lastIndexOf('```') + 3).trim() 
+        : ''
       
       return (
         <>
-          {beforeCode && (
+          {beforeCodeRef.current && (
             <div className="streaming-markdown">
-              <ReactMarkdown>{beforeCode}</ReactMarkdown>
+              <ReactMarkdown>{beforeCodeRef.current}</ReactMarkdown>
             </div>
           )}
-          <div className="artifact-card artifact-streaming" onClick={() => openCodePreview(artifactCodeRef.current, artifactLangRef.current)} key="artifact">
+          <div className="artifact-card artifact-streaming" onClick={() => openCodePreview(artifactCodeRef.current, streamingArtifact.language)}>
             <div className="artifact-phone">
               <div className="artifact-phone-screen">
                 <div className="artifact-phone-dots">
                   <span></span><span></span><span></span>
                 </div>
                 <div className="artifact-phone-code">
-                  {codeLines.map((line, lineIdx) => (
-                    <div key={lineIdx} className="artifact-code-line">{line || ' '}</div>
-                  ))}
+                  <div className="artifact-code-line">// {streamingArtifact.fileName}</div>
+                  <div className="artifact-code-line">// Генерация кода...</div>
                 </div>
               </div>
             </div>
             <div className="artifact-info">
-              <div className="artifact-title">{fileName}</div>
+              <div className="artifact-title">{streamingArtifact.fileName}</div>
               <div className="artifact-subtitle">
-                {isComplete ? 'Нажмите чтобы открыть' : 'Генерация...'}
+                {streamingArtifact.isComplete ? 'Нажмите чтобы открыть' : 'Генерация...'}
               </div>
             </div>
-            {!isComplete && (
+            {!streamingArtifact.isComplete && (
               <div className="artifact-loading">
                 <span></span><span></span><span></span>
               </div>
             )}
-            {isComplete && (
+            {streamingArtifact.isComplete && (
               <div className="artifact-arrow">
                 <i data-lucide="chevron-right" style={{width: 20, height: 20}}></i>
               </div>
@@ -782,7 +804,7 @@ export default function Home() {
               <span className="cursor" />
             </div>
           )}
-          {!afterCode && !isComplete && <span className="cursor" />}
+          {!afterCode && !streamingArtifact.isComplete && <span className="cursor" />}
         </>
       )
     }
