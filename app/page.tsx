@@ -78,6 +78,7 @@ export default function Home() {
   const [selectedModel, setSelectedModel] = useState<'free' | 'pro'>('free')
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
+  const [toast, setToast] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const chatRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -431,10 +432,14 @@ export default function Home() {
   const copyText = (text: string) => {
     navigator.clipboard.writeText(text)
     setOpenMenuId(null)
+    setToast('Скопировано!')
+    setTimeout(() => setToast(null), 2000)
   }
 
   const copyCode = (code: string) => {
     navigator.clipboard.writeText(code)
+    setToast('Скопировано!')
+    setTimeout(() => setToast(null), 2000)
   }
 
   const openCodePreview = (code: string, language: string) => {
@@ -587,8 +592,20 @@ export default function Home() {
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
       let fullContent = ''
+      let displayedContent = ''
       let sources: { title: string; url: string }[] = []
       let generatedImage: string | null = null
+
+      // Smooth streaming with character-by-character display
+      const updateDisplay = () => {
+        if (displayedContent.length < fullContent.length) {
+          // Add 2-4 characters at a time for smoother effect
+          const charsToAdd = Math.min(3, fullContent.length - displayedContent.length)
+          displayedContent = fullContent.slice(0, displayedContent.length + charsToAdd)
+          setStreamingContent(displayedContent)
+          setTimeout(updateDisplay, 15) // 15ms delay between updates
+        }
+      }
 
       if (reader) {
         while (true) {
@@ -610,7 +627,10 @@ export default function Home() {
                 }
                 if (parsed.content) {
                   fullContent += parsed.content
-                  setStreamingContent(fullContent)
+                  // Start smooth display if not already running
+                  if (displayedContent.length === 0 || displayedContent.length >= fullContent.length - parsed.content.length) {
+                    updateDisplay()
+                  }
                 }
                 if (parsed.generatedImage) {
                   generatedImage = parsed.generatedImage
@@ -620,6 +640,14 @@ export default function Home() {
             }
           }
         }
+      }
+
+      // Wait for smooth display to finish
+      while (displayedContent.length < fullContent.length) {
+        await new Promise(resolve => setTimeout(resolve, 20))
+        const charsToAdd = Math.min(3, fullContent.length - displayedContent.length)
+        displayedContent = fullContent.slice(0, displayedContent.length + charsToAdd)
+        setStreamingContent(displayedContent)
       }
 
       // Clear streaming BEFORE adding to messages to prevent duplication
@@ -1481,6 +1509,14 @@ export default function Home() {
             </div>
           </div>
         </>
+      )}
+
+      {/* Toast notification */}
+      {toast && (
+        <div className="toast">
+          <i data-lucide="check-circle" style={{width: 18, height: 18}}></i>
+          {toast}
+        </div>
       )}
         </>
       )}
