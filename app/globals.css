@@ -2249,6 +2249,30 @@ input:focus-visible {
   outline: none;
 }
 
+/* ==================== LUCIDE ICONS FIX ==================== */
+/* Prevent icons from blocking button clicks */
+button i,
+button svg,
+button [data-lucide],
+.settings-action i,
+.settings-action svg,
+.auth-submit i,
+.auth-submit svg,
+.mode-btn i,
+.mode-btn svg,
+.send-btn i,
+.send-btn svg,
+.mic-btn i,
+.mic-btn svg {
+  pointer-events: none;
+}
+
+/* Ensure all buttons are clickable */
+button {
+  position: relative;
+  z-index: 1;
+}
+
 
 /* Fix streaming animation flicker */
 .message.streaming {
