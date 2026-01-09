@@ -249,8 +249,8 @@ export async function POST(request: NextRequest) {
       // Research mode uses the best available model with enhanced reasoning prompt
       model = isPremium ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant'
     } else if (hasImages) {
-      // Vision model for image analysis - available for all users
-      model = 'llama-3.2-11b-vision-preview'
+      // Vision model for image analysis
+      model = 'llava-v1.5-7b-4096-preview'
     } else if (isPremium) {
       model = 'llama-3.3-70b-versatile'
     } else {
@@ -310,6 +310,42 @@ export async function POST(request: NextRequest) {
     for (let attempt = 0; attempt < Math.min(GROQ_KEYS.length, 3); attempt++) {
       try {
         const groq = getNextGroqClient()
+        
+        // Vision models don't support streaming well, use non-streaming
+        if (hasImages) {
+          const completion = await groq.chat.completions.create({
+            model,
+            messages,
+            temperature: 0.7,
+            max_tokens: 1500,
+            stream: false,
+          })
+          
+          const content = completion.choices[0]?.message?.content || 'Не удалось проанализировать изображение'
+          
+          const encoder = new TextEncoder()
+          const readable = new ReadableStream({
+            start(controller) {
+              // Send content in chunks for smooth display
+              const words = content.split(' ')
+              let sent = ''
+              for (const word of words) {
+                sent += (sent ? ' ' : '') + word
+              }
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`))
+              controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+              controller.close()
+            },
+          })
+          
+          return new Response(readable, {
+            headers: {
+              'Content-Type': 'text/event-stream',
+              'Cache-Control': 'no-cache',
+              'Connection': 'keep-alive',
+            },
+          })
+        }
         
         const stream = await groq.chat.completions.create({
           model,
