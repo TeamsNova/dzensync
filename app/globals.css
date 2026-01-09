@@ -441,7 +441,8 @@ body {
   color: var(--text);
 }
 
-.delete-btn {
+.delete-btn,
+.pin-btn {
   background: none;
   border: none;
   cursor: pointer;
@@ -452,8 +453,21 @@ body {
   border-radius: 6px;
 }
 
-.chat-item:hover .delete-btn { opacity: 0.6; }
+.chat-item:hover .delete-btn,
+.chat-item:hover .pin-btn { opacity: 0.6; }
 .delete-btn:hover { opacity: 1 !important; color: #dc2626; background: rgba(220, 38, 38, 0.1); }
+.pin-btn:hover { opacity: 1 !important; color: var(--accent); background: var(--accent-glow); }
+
+/* Pinned chat styling */
+.chat-item.pinned {
+  background: var(--accent-glow);
+  border-color: var(--border-accent);
+}
+
+.chat-item.pinned .pin-btn {
+  opacity: 0.8;
+  color: var(--accent);
+}
 
 .no-chats {
   text-align: center;

@@ -192,6 +192,10 @@ const SYSTEM_PROMPT = `Ты — Zenith Sync 3.0, продвинутый AI ас�
 ФОРМАТИРОВАНИЕ КОДА:
 - Используй markdown с указанием языка: \`\`\`python
 
+ПАМЯТЬ:
+- Если пользователь сообщает важную информацию о себе (имя, предпочтения, проекты), добавь в ответ: [ЗАПОМНИТЬ: краткий факт]
+- Используй информацию из памяти для персонализации ответов
+
 Стиль: без эмодзи, по делу, можешь шутить.`
 
 const THINKING_PROMPT = `Ты — Zenith Sync 3.0 в режиме глубокого анализа.
@@ -270,7 +274,7 @@ const CODEX_PROMPT = `Ты — Zenith Summit 3.0 Codex, специализиро
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, history, mode, isPremium, modelName, attachments } = await request.json()
+    const { message, history, mode, isPremium, modelName, attachments, memoryContext } = await request.json()
 
     if (!message && (!attachments || attachments.length === 0)) {
       return new Response(JSON.stringify({ error: 'Сообщение пустое' }), { status: 400 })
@@ -334,6 +338,11 @@ export async function POST(request: NextRequest) {
       } else {
         userContent = `Запрос: ${message}\n\nПоиск не дал результатов. Ответь на основе своих знаний.`
       }
+    }
+
+    // Add memory context to system prompt
+    if (memoryContext) {
+      systemPrompt += memoryContext
     }
 
     const messages: any[] = [

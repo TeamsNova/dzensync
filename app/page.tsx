@@ -30,6 +30,15 @@ interface Chat {
   id: string
   title: string
   messages: Message[]
+  pinned?: boolean
+}
+
+// Memory interface - stores user preferences and context
+interface UserMemory {
+  name?: string
+  preferences?: string[]
+  facts?: string[]
+  lastUpdated?: string
 }
 
 interface CodePreview {
@@ -80,8 +89,92 @@ export default function Home() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
   const [toast, setToast] = useState<string | null>(null)
   const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [userMemory, setUserMemory] = useState<UserMemory>({})
   const chatRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  // Load user memory from localStorage
+  useEffect(() => {
+    const savedMemory = localStorage.getItem('zenith-memory')
+    if (savedMemory) {
+      try {
+        setUserMemory(JSON.parse(savedMemory))
+      } catch {}
+    }
+  }, [])
+
+  // Save memory to localStorage
+  const saveMemory = (memory: UserMemory) => {
+    const updated = { ...memory, lastUpdated: new Date().toISOString() }
+    setUserMemory(updated)
+    localStorage.setItem('zenith-memory', JSON.stringify(updated))
+  }
+
+  // Extract and save facts from conversation
+  const extractMemoryFromResponse = (response: string) => {
+    // Look for memory markers in response
+    const memoryMatch = response.match(/\[ЗАПОМНИТЬ:\s*(.+?)\]/gi)
+    if (memoryMatch) {
+      const newFacts = memoryMatch.map(m => m.replace(/\[ЗАПОМНИТЬ:\s*/i, '').replace(/\]$/, ''))
+      const currentFacts = userMemory.facts || []
+      const allFacts = [...currentFacts, ...newFacts]
+      const uniqueFacts = allFacts.filter((fact, index) => allFacts.indexOf(fact) === index).slice(-20) // Keep last 20 facts
+      saveMemory({ ...userMemory, facts: uniqueFacts })
+    }
+  }
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl/Cmd + N - New chat
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault()
+        createNewChat()
+        showToast('Новый чат создан')
+      }
+      // Ctrl/Cmd + / - Focus input
+      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+        e.preventDefault()
+        inputRef.current?.focus()
+      }
+      // Ctrl/Cmd + B - Toggle sidebar
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+        e.preventDefault()
+        setSidebarOpen(prev => !prev)
+      }
+      // Ctrl/Cmd + Shift + P - Toggle premium modal
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'P') {
+        e.preventDefault()
+        setPremiumModalOpen(prev => !prev)
+      }
+      // Escape - Close modals
+      if (e.key === 'Escape') {
+        setSettingsOpen(false)
+        setPremiumModalOpen(false)
+        setLimitModalOpen(false)
+        setCodePreview(null)
+        setModelMenuOpen(false)
+      }
+      // 1-5 - Switch modes (when not typing)
+      if (!e.ctrlKey && !e.metaKey && document.activeElement?.tagName !== 'TEXTAREA' && document.activeElement?.tagName !== 'INPUT') {
+        if (e.key === '1') setMode('normal')
+        if (e.key === '2') setMode('thinking')
+        if (e.key === '3') setMode('search')
+        if (e.key === '4') setMode('research')
+        if (e.key === '5') setMode('codex')
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
+  // Toast helper
+  const showToast = (message: string) => {
+    setToast(message)
+    setTimeout(() => setToast(null), 2000)
+  }
 
   // Load saved theme from localStorage
   useEffect(() => {
@@ -367,6 +460,20 @@ export default function Home() {
     }
   }
 
+  const togglePinChat = (id: string) => {
+    setChats(prev => prev.map(chat => 
+      chat.id === id ? { ...chat, pinned: !chat.pinned } : chat
+    ))
+    showToast(chats.find(c => c.id === id)?.pinned ? 'Чат откреплён' : 'Чат закреплён')
+  }
+
+  // Sort chats: pinned first, then by id (newest first)
+  const sortedChats = [...chats].sort((a, b) => {
+    if (a.pinned && !b.pinned) return -1
+    if (!a.pinned && b.pinned) return 1
+    return 0
+  })
+
   const clearAllChats = () => {
     setChats([])
     setCurrentChatId(null)
@@ -572,6 +679,12 @@ export default function Home() {
 
     try {
       const chatMessages = chats.find(c => c.id === chatId)?.messages || []
+      
+      // Build memory context
+      const memoryContext = userMemory.facts && userMemory.facts.length > 0
+        ? `\n\nПАМЯТЬ О ПОЛЬЗОВАТЕЛЕ:\n${userMemory.facts.join('\n')}`
+        : ''
+      
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -581,7 +694,8 @@ export default function Home() {
           mode,
           isPremium: profile?.is_premium && selectedModel === 'pro',
           modelName: selectedModel === 'pro' ? 'Zenith Summit 3.5 Pro' : 'Zenith Sync 3.0',
-          attachments: currentAttachments
+          attachments: currentAttachments,
+          memoryContext
         }),
       })
 
@@ -679,6 +793,9 @@ export default function Home() {
         }
         return chat
       }))
+      
+      // Extract memory from response
+      extractMemoryFromResponse(cleanContent)
       
       // Increment message count after successful response
       await incrementMessageCount(mode === 'research')
@@ -1026,10 +1143,13 @@ export default function Home() {
           Новый чат
         </button>
         <div className="chat-list">
-          {chats.map(chat => (
-            <div key={chat.id} className={`chat-item ${chat.id === currentChatId ? 'active' : ''}`} onClick={() => setCurrentChatId(chat.id)}>
-              <i data-lucide="message-square" style={{width: 16, height: 16, opacity: 0.5}}></i>
+          {sortedChats.map(chat => (
+            <div key={chat.id} className={`chat-item ${chat.id === currentChatId ? 'active' : ''} ${chat.pinned ? 'pinned' : ''}`} onClick={() => setCurrentChatId(chat.id)}>
+              <i data-lucide={chat.pinned ? "pin" : "message-square"} style={{width: 16, height: 16, opacity: chat.pinned ? 1 : 0.5, color: chat.pinned ? 'var(--accent)' : 'inherit'}}></i>
               <span className="chat-title">{chat.title}</span>
+              <button className="pin-btn" onClick={(e) => { e.stopPropagation(); togglePinChat(chat.id) }} title={chat.pinned ? 'Открепить' : 'Закрепить'}>
+                <i data-lucide={chat.pinned ? "pin-off" : "pin"} style={{width: 14, height: 14}}></i>
+              </button>
               <button className="delete-btn" onClick={(e) => { e.stopPropagation(); deleteChat(chat.id) }}>
                 <i data-lucide="trash-2" style={{width: 14, height: 14}}></i>
               </button>
@@ -1308,6 +1428,7 @@ export default function Home() {
               <i data-lucide="paperclip" style={{width: 18, height: 18}}></i>
             </button>
             <input
+              ref={inputRef as any}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
