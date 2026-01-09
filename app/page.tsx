@@ -592,19 +592,25 @@ export default function Home() {
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
       let fullContent = ''
-      let displayedContent = ''
+      let displayedIndex = 0
       let sources: { title: string; url: string }[] = []
       let generatedImage: string | null = null
+      let isDisplaying = false
 
-      // Smooth streaming with character-by-character display
-      const updateDisplay = () => {
-        if (displayedContent.length < fullContent.length) {
-          // Add 2-4 characters at a time for smoother effect
-          const charsToAdd = Math.min(3, fullContent.length - displayedContent.length)
-          displayedContent = fullContent.slice(0, displayedContent.length + charsToAdd)
-          setStreamingContent(displayedContent)
-          setTimeout(updateDisplay, 15) // 15ms delay between updates
+      // Smooth streaming - show 1-2 chars every 25ms for realistic typing
+      const smoothDisplay = async () => {
+        if (isDisplaying) return
+        isDisplaying = true
+        
+        while (displayedIndex < fullContent.length) {
+          // Add 1-2 characters at a time
+          const charsToAdd = Math.min(2, fullContent.length - displayedIndex)
+          displayedIndex += charsToAdd
+          setStreamingContent(fullContent.slice(0, displayedIndex))
+          await new Promise(r => setTimeout(r, 25)) // 25ms per update = ~80 chars/sec
         }
+        
+        isDisplaying = false
       }
 
       if (reader) {
@@ -627,10 +633,8 @@ export default function Home() {
                 }
                 if (parsed.content) {
                   fullContent += parsed.content
-                  // Start smooth display if not already running
-                  if (displayedContent.length === 0 || displayedContent.length >= fullContent.length - parsed.content.length) {
-                    updateDisplay()
-                  }
+                  // Start smooth display
+                  smoothDisplay()
                 }
                 if (parsed.generatedImage) {
                   generatedImage = parsed.generatedImage
@@ -642,12 +646,11 @@ export default function Home() {
         }
       }
 
-      // Wait for smooth display to finish
-      while (displayedContent.length < fullContent.length) {
-        await new Promise(resolve => setTimeout(resolve, 20))
-        const charsToAdd = Math.min(3, fullContent.length - displayedContent.length)
-        displayedContent = fullContent.slice(0, displayedContent.length + charsToAdd)
-        setStreamingContent(displayedContent)
+      // Wait for smooth display to finish showing all content
+      while (displayedIndex < fullContent.length) {
+        await new Promise(resolve => setTimeout(resolve, 30))
+        displayedIndex += 2
+        setStreamingContent(fullContent.slice(0, Math.min(displayedIndex, fullContent.length)))
       }
 
       // Clear streaming BEFORE adding to messages to prevent duplication
