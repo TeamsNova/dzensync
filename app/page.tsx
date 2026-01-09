@@ -705,6 +705,20 @@ export default function Home() {
   }
 
   // Streaming content with thinking and artifact support
+  // Track artifact state to prevent flickering
+  const [artifactShown, setArtifactShown] = useState(false)
+  const artifactCodeRef = useRef<string>('')
+  const artifactLangRef = useRef<string>('')
+
+  // Reset artifact state when streaming ends
+  useEffect(() => {
+    if (!isLoading) {
+      setArtifactShown(false)
+      artifactCodeRef.current = ''
+      artifactLangRef.current = ''
+    }
+  }, [isLoading])
+
   const StreamingContent = ({ content, isThinking }: { content: string; isThinking: boolean }) => {
     // Check for code blocks during streaming - show artifact immediately
     const codeMatch = content.match(/```(\w*)\n?([\s\S]*?)($|```)/)
@@ -715,13 +729,24 @@ export default function Home() {
       const isComplete = content.includes('```', content.indexOf('```') + 3)
       const beforeCode = content.slice(0, content.indexOf('```')).trim()
       const afterCode = isComplete ? content.slice(content.lastIndexOf('```') + 3).trim() : ''
-      const codeLines = codeContent.split('\n').slice(0, 8)
+      
+      // Store code for artifact (only update if more content)
+      if (codeContent.length > artifactCodeRef.current.length) {
+        artifactCodeRef.current = codeContent
+        artifactLangRef.current = language
+      }
+      
+      const codeLines = artifactCodeRef.current.split('\n').slice(0, 8)
       const fileName = language ? `code.${language === 'javascript' ? 'js' : language === 'typescript' ? 'ts' : language === 'python' ? 'py' : language}` : 'code.txt'
       
       return (
         <>
-          {beforeCode && <span className="streaming-text">{beforeCode}</span>}
-          <div className="artifact-card artifact-streaming" onClick={() => openCodePreview(codeContent, language)}>
+          {beforeCode && (
+            <div className="streaming-markdown">
+              <ReactMarkdown>{beforeCode}</ReactMarkdown>
+            </div>
+          )}
+          <div className="artifact-card artifact-streaming" onClick={() => openCodePreview(artifactCodeRef.current, artifactLangRef.current)} key="artifact">
             <div className="artifact-phone">
               <div className="artifact-phone-screen">
                 <div className="artifact-phone-dots">
@@ -751,14 +776,24 @@ export default function Home() {
               </div>
             )}
           </div>
-          {afterCode && <span className="streaming-text">{afterCode}<span className="cursor" /></span>}
+          {afterCode && (
+            <div className="streaming-markdown">
+              <ReactMarkdown>{afterCode}</ReactMarkdown>
+              <span className="cursor" />
+            </div>
+          )}
           {!afterCode && !isComplete && <span className="cursor" />}
         </>
       )
     }
     
     if (!isThinking) {
-      return <span className="streaming-text">{content}<span className="cursor" /></span>
+      return (
+        <div className="streaming-markdown">
+          <ReactMarkdown>{content}</ReactMarkdown>
+          <span className="cursor" />
+        </div>
+      )
     }
 
     // Parse <think>...</think> tags

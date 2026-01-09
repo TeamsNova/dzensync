@@ -1604,6 +1604,20 @@ body {
 /* ==================== STREAMING & THINKING ==================== */
 .streaming-text { white-space: pre-wrap; }
 
+.streaming-markdown {
+  display: inline;
+}
+
+.streaming-markdown p {
+  display: inline;
+  margin: 0;
+}
+
+.streaming-markdown p:not(:last-child)::after {
+  content: '\A\A';
+  white-space: pre;
+}
+
 .cursor {
   display: inline-block;
   width: 2px;
