@@ -1,10 +1,18 @@
 import { NextRequest } from 'next/server'
 import Groq from 'groq-sdk'
 
-// Ротация ключей Groq - добавляй ключи как GROQ_API_KEY_1, GROQ_API_KEY_2, и т.д.
+// Ротация ключей Groq - можно добавить как:
+// 1. Одной строкой GROQ_API_KEYS = "key1,key2,key3" (через запятую или пробел)
+// 2. Отдельными переменными GROQ_API_KEY_1, GROQ_API_KEY_2, и т.д.
 const GROQ_KEYS: string[] = []
 
-// Собираем все ключи из переменных окружения
+// Парсим ключи из одной строки (разделитель: запятая, пробел или перенос строки)
+if (process.env.GROQ_API_KEYS) {
+  const keys = process.env.GROQ_API_KEYS.split(/[,\s\n]+/).filter(k => k.trim().length > 0)
+  GROQ_KEYS.push(...keys.map(k => k.trim()))
+}
+
+// Также поддерживаем отдельные переменные
 if (process.env.GROQ_API_KEY) GROQ_KEYS.push(process.env.GROQ_API_KEY)
 if (process.env.GROQ_API_KEY_1) GROQ_KEYS.push(process.env.GROQ_API_KEY_1)
 if (process.env.GROQ_API_KEY_2) GROQ_KEYS.push(process.env.GROQ_API_KEY_2)
