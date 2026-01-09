@@ -11,6 +11,11 @@ if (process.env.GROQ_API_KEY_2) GROQ_KEYS.push(process.env.GROQ_API_KEY_2)
 if (process.env.GROQ_API_KEY_3) GROQ_KEYS.push(process.env.GROQ_API_KEY_3)
 if (process.env.GROQ_API_KEY_4) GROQ_KEYS.push(process.env.GROQ_API_KEY_4)
 if (process.env.GROQ_API_KEY_5) GROQ_KEYS.push(process.env.GROQ_API_KEY_5)
+if (process.env.GROQ_API_KEY_6) GROQ_KEYS.push(process.env.GROQ_API_KEY_6)
+if (process.env.GROQ_API_KEY_7) GROQ_KEYS.push(process.env.GROQ_API_KEY_7)
+if (process.env.GROQ_API_KEY_8) GROQ_KEYS.push(process.env.GROQ_API_KEY_8)
+if (process.env.GROQ_API_KEY_9) GROQ_KEYS.push(process.env.GROQ_API_KEY_9)
+if (process.env.GROQ_API_KEY_10) GROQ_KEYS.push(process.env.GROQ_API_KEY_10)
 
 let currentKeyIndex = 0
 let keyFailures: { [key: number]: number } = {}
