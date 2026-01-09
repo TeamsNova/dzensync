@@ -847,7 +847,7 @@ export default function Home() {
       <>
         {parts.map((part, idx) => {
           if (part.type === 'code') {
-            const codeLines = part.content.split('\n').slice(0, 8)
+            const codeLines = part.content.split('\n').slice(0, 10)
             return (
               <div key={idx} className="code-with-phone">
                 <div className="code-block">
