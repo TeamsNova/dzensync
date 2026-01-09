@@ -248,8 +248,9 @@ export async function POST(request: NextRequest) {
     if (mode === 'research') {
       // Research mode uses the best available model with enhanced reasoning prompt
       model = isPremium ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant'
-    } else if (hasImages && isPremium) {
-      model = 'llama-3.2-90b-vision-preview'
+    } else if (hasImages) {
+      // Vision model for image analysis - available for all users
+      model = 'llama-3.2-11b-vision-preview'
     } else if (isPremium) {
       model = 'llama-3.3-70b-versatile'
     } else {
@@ -266,7 +267,7 @@ export async function POST(request: NextRequest) {
       userContent = `${fileContext}\n\n${message || 'Проанализируй этот файл'}`
     }
 
-    if (hasImages && isPremium) {
+    if (hasImages) {
       systemPrompt = VISION_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
       const contentParts: { type: string; text?: string; image_url?: { url: string } }[] = []
       for (const img of imageAttachments) {
@@ -274,10 +275,6 @@ export async function POST(request: NextRequest) {
       }
       contentParts.push({ type: 'text', text: message || 'Что на этом изображении?' })
       userContent = contentParts
-    } else if (hasImages && !isPremium) {
-      return new Response(JSON.stringify({ 
-        error: 'Анализ изображений доступен только для Premium' 
-      }), { status: 403 })
     }
 
     if (mode === 'research') {
