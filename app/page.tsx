@@ -847,20 +847,39 @@ export default function Home() {
       <>
         {parts.map((part, idx) => {
           if (part.type === 'code') {
+            const codeLines = part.content.split('\n').slice(0, 8)
             return (
-              <div key={idx} className="code-block">
-                <div className="code-header">
-                  <span className="code-lang">{part.language || 'code'}</span>
-                  <div className="code-actions">
-                    <button onClick={() => onCopyCode(part.content)} title="Копировать">
-                      <i data-lucide="copy" style={{width: 14, height: 14}}></i>
-                    </button>
-                    <button onClick={() => onOpenCode(part.content, part.language || '')} title="Открыть">
-                      <i data-lucide="maximize-2" style={{width: 14, height: 14}}></i>
-                    </button>
+              <div key={idx} className="code-with-phone">
+                <div className="code-block">
+                  <div className="code-header">
+                    <span className="code-lang">{part.language || 'code'}</span>
+                    <div className="code-actions">
+                      <button onClick={() => onCopyCode(part.content)} title="Копировать">
+                        <i data-lucide="copy" style={{width: 14, height: 14}}></i>
+                      </button>
+                      <button onClick={() => onOpenCode(part.content, part.language || '')} title="Открыть">
+                        <i data-lucide="maximize-2" style={{width: 14, height: 14}}></i>
+                      </button>
+                    </div>
+                  </div>
+                  <pre><code>{part.content}</code></pre>
+                </div>
+                <div className="phone-3d-container">
+                  <div className="phone-3d">
+                    <div className="phone-3d-screen">
+                      <div className="phone-3d-header">
+                        <div className="phone-3d-dot"></div>
+                        <div className="phone-3d-dot"></div>
+                        <div className="phone-3d-dot"></div>
+                      </div>
+                      <div className="phone-3d-code">
+                        {codeLines.map((line, lineIdx) => (
+                          <div key={lineIdx} className="code-line">{line || ' '}</div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <pre><code>{part.content}</code></pre>
               </div>
             )
           }
