@@ -20,7 +20,7 @@ interface Profile {
 interface Message {
   role: 'user' | 'assistant' | 'error'
   content: string
-  mode?: 'normal' | 'thinking' | 'search' | 'research'
+  mode?: 'normal' | 'thinking' | 'search' | 'research' | 'codex'
   sources?: { title: string; url: string }[]
   attachments?: Attachment[]
   generatedImage?: string
@@ -45,7 +45,7 @@ interface Attachment {
   preview?: string
 }
 
-type Mode = 'normal' | 'thinking' | 'search' | 'research'
+type Mode = 'normal' | 'thinking' | 'search' | 'research' | 'codex'
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null)
@@ -1155,6 +1155,9 @@ export default function Home() {
             <button className={`mode-btn research ${mode === 'research' ? 'active' : ''}`} onClick={() => setMode('research')} title={`Глубокое исследование${!profile?.is_premium ? ` (${researchLeft()}/${RESEARCH_LIMIT})` : ''}`}>
               <i data-lucide="microscope" style={{width: 18, height: 18}}></i>
             </button>
+            <button className={`mode-btn codex ${mode === 'codex' ? 'active' : ''}`} onClick={() => setMode('codex')} title="Режим кодинга">
+              <i data-lucide="code-2" style={{width: 18, height: 18}}></i>
+            </button>
           </div>
           <button className="theme-toggle" onClick={toggleTheme} title={theme === 'light' ? 'Тёмная тема' : 'Светлая тема'}>
             <i data-lucide={theme === 'light' ? 'moon' : 'sun'} style={{width: 20, height: 20}}></i>
@@ -1177,6 +1180,7 @@ export default function Home() {
                 <div className="mode-card"><i data-lucide="brain" style={{width: 20, height: 20}}></i><span>Thinking</span></div>
                 <div className="mode-card"><i data-lucide="search" style={{width: 20, height: 20}}></i><span>Search</span></div>
                 <div className="mode-card research"><i data-lucide="microscope" style={{width: 20, height: 20}}></i><span>Research</span></div>
+                <div className="mode-card codex"><i data-lucide="code-2" style={{width: 20, height: 20}}></i><span>Codex</span></div>
               </div>
             </div>
           ) : (
@@ -1185,9 +1189,9 @@ export default function Home() {
                 <div key={i} className={`message-wrapper ${msg.role}`}>
                   <div className={`message ${msg.role}`}>
                     {msg.mode && msg.mode !== 'normal' && msg.role === 'assistant' && (
-                      <div className={`message-mode ${msg.mode === 'research' ? 'research' : ''}`}>
-                        <i data-lucide={msg.mode === 'thinking' ? 'brain' : msg.mode === 'research' ? 'microscope' : 'search'} style={{width: 12, height: 12}}></i>
-                        {msg.mode === 'thinking' ? 'Thinking' : msg.mode === 'research' ? 'Deep Research' : 'Search'}
+                      <div className={`message-mode ${msg.mode === 'research' ? 'research' : ''} ${msg.mode === 'codex' ? 'codex' : ''}`}>
+                        <i data-lucide={msg.mode === 'thinking' ? 'brain' : msg.mode === 'research' ? 'microscope' : msg.mode === 'codex' ? 'code-2' : 'search'} style={{width: 12, height: 12}}></i>
+                        {msg.mode === 'thinking' ? 'Thinking' : msg.mode === 'research' ? 'Deep Research' : msg.mode === 'codex' ? 'Codex' : 'Search'}
                       </div>
                     )}
                     {/* User attachments */}

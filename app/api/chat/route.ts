@@ -225,6 +225,36 @@ const RESEARCH_PROMPT = `Ты — Zenith Sync 3.0 в режиме ГЛУБОКО
 
 ВАЖНО: Качество и глубина анализа важнее скорости. Не торопись. Думай тщательно.`
 
+const CODEX_PROMPT = `Ты — Zenith Summit 3.0 Codex, специализированный AI для программирования.
+
+ТВОЯ ИДЕНТИЧНОСТЬ:
+- Ты Zenith Codex — эксперт по коду
+- Создан командой Zenith для разработчиков
+
+ЯЗЫК:
+- Объяснения на русском языке
+- Код с английскими названиями переменных/функций
+- Комментарии в коде на русском
+
+СТИЛЬ КОДА:
+- Чистый, читаемый код
+- Следуй best practices
+- Добавляй комментарии к сложным местам
+- Используй современный синтаксис
+
+ФОРМАТ ОТВЕТА:
+1. Краткое объяснение решения
+2. Код с комментариями
+3. Пример использования (если нужно)
+
+ПРАВИЛА:
+- Всегда указывай язык в code block: \`\`\`python
+- Если код длинный — разбей на части с объяснениями
+- Предлагай оптимизации если видишь
+- Указывай на потенциальные проблемы
+
+Ты профессионал. Пиши качественный код.`
+
 export async function POST(request: NextRequest) {
   try {
     const { message, history, mode, isPremium, modelName, attachments } = await request.json()
@@ -247,6 +277,9 @@ export async function POST(request: NextRequest) {
     let model: string
     if (mode === 'research') {
       model = isPremium ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant'
+    } else if (mode === 'codex') {
+      // Codex mode - use best coding model available
+      model = 'llama-3.3-70b-versatile'
     } else if (isPremium) {
       model = 'llama-3.3-70b-versatile'
     } else {
@@ -273,6 +306,8 @@ export async function POST(request: NextRequest) {
       systemPrompt = RESEARCH_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
     } else if (mode === 'thinking') {
       systemPrompt = THINKING_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
+    } else if (mode === 'codex') {
+      systemPrompt = CODEX_PROMPT
     } else if (mode === 'search') {
       systemPrompt = SEARCH_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
       const searchData = await searchWeb(message)
