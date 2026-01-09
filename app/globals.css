@@ -53,12 +53,11 @@ body {
   background: var(--bg);
   min-height: 100vh;
   color: var(--text);
-  overflow: hidden;
   transition: background 0.3s, color 0.3s;
 }
 
 /* Layout */
-.app { display: flex; height: 100vh; background: var(--bg); transition: background 0.3s; }
+.app { display: flex; height: 100vh; background: var(--bg); transition: background 0.3s; overflow: hidden; }
 
 /* Theme Toggle Button */
 .theme-toggle {
@@ -1768,21 +1767,6 @@ body {
 
 /* ==================== RESPONSIVE - MOBILE ==================== */
 @media (max-width: 768px) {
-  /* Fix scrolling on mobile */
-  body {
-    overflow: auto;
-    overflow-x: hidden;
-    position: fixed;
-    width: 100%;
-    height: 100%;
-  }
-  
-  .app {
-    height: 100%;
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
-  }
-  
   /* Sidebar */
   .sidebar {
     position: fixed;
