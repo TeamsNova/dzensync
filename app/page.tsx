@@ -847,38 +847,28 @@ export default function Home() {
       <>
         {parts.map((part, idx) => {
           if (part.type === 'code') {
-            const codeLines = part.content.split('\n').slice(0, 10)
+            const codeLines = part.content.split('\n').slice(0, 8)
+            const fileName = part.language ? `code.${part.language === 'javascript' ? 'js' : part.language === 'typescript' ? 'ts' : part.language === 'python' ? 'py' : part.language}` : 'code.txt'
             return (
-              <div key={idx} className="code-with-phone">
-                <div className="code-block">
-                  <div className="code-header">
-                    <span className="code-lang">{part.language || 'code'}</span>
-                    <div className="code-actions">
-                      <button onClick={() => onCopyCode(part.content)} title="Копировать">
-                        <i data-lucide="copy" style={{width: 14, height: 14}}></i>
-                      </button>
-                      <button onClick={() => onOpenCode(part.content, part.language || '')} title="Открыть">
-                        <i data-lucide="maximize-2" style={{width: 14, height: 14}}></i>
-                      </button>
+              <div key={idx} className="artifact-card" onClick={() => onOpenCode(part.content, part.language || '')}>
+                <div className="artifact-phone">
+                  <div className="artifact-phone-screen">
+                    <div className="artifact-phone-dots">
+                      <span></span><span></span><span></span>
+                    </div>
+                    <div className="artifact-phone-code">
+                      {codeLines.map((line, lineIdx) => (
+                        <div key={lineIdx} className="artifact-code-line">{line || ' '}</div>
+                      ))}
                     </div>
                   </div>
-                  <pre><code>{part.content}</code></pre>
                 </div>
-                <div className="phone-3d-container">
-                  <div className="phone-3d">
-                    <div className="phone-3d-screen">
-                      <div className="phone-3d-header">
-                        <div className="phone-3d-dot"></div>
-                        <div className="phone-3d-dot"></div>
-                        <div className="phone-3d-dot"></div>
-                      </div>
-                      <div className="phone-3d-code">
-                        {codeLines.map((line, lineIdx) => (
-                          <div key={lineIdx} className="code-line">{line || ' '}</div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                <div className="artifact-info">
+                  <div className="artifact-title">{fileName}</div>
+                  <div className="artifact-subtitle">Нажмите чтобы открыть</div>
+                </div>
+                <div className="artifact-arrow">
+                  <i data-lucide="chevron-right" style={{width: 20, height: 20}}></i>
                 </div>
               </div>
             )
@@ -1299,13 +1289,20 @@ export default function Home() {
       {codePreview && (
         <div className="code-preview-panel">
           <div className="code-preview-header">
-            <span className="code-preview-lang">{codePreview.language || 'code'}</span>
+            <div className="code-preview-title">
+              <div className="code-preview-icon">
+                <i data-lucide="code-2" style={{width: 18, height: 18}}></i>
+              </div>
+              <span className="code-preview-lang">{codePreview.language || 'code'}</span>
+            </div>
             <div className="code-preview-actions">
-              <button onClick={() => copyCode(codePreview.code)} title="Копировать">
-                <i data-lucide="copy" style={{width: 16, height: 16}}></i>
+              <button onClick={() => copyCode(codePreview.code)}>
+                <i data-lucide="copy" style={{width: 14, height: 14}}></i>
+                Копировать
               </button>
-              <button onClick={() => setCodePreview(null)} title="Закрыть">
-                <i data-lucide="x" style={{width: 16, height: 16}}></i>
+              <button onClick={() => setCodePreview(null)}>
+                <i data-lucide="x" style={{width: 14, height: 14}}></i>
+                Закрыть
               </button>
             </div>
           </div>

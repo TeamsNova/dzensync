@@ -826,126 +826,138 @@ body {
   box-shadow: var(--shadow);
 }
 
-/* ==================== 3D PHONE PREVIEW ==================== */
-.code-with-phone {
-  position: relative;
+/* ==================== ARTIFACT CARDS ==================== */
+.artifact-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 16px;
   margin: 14px 0;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.code-with-phone .code-block {
-  margin: 0;
+.artifact-card:hover {
+  background: var(--accent-glow);
+  border-color: var(--border-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px var(--accent-glow);
 }
 
-.phone-3d-container {
-  position: absolute;
-  bottom: -10px;
-  right: -10px;
-  perspective: 800px;
-  z-index: 10;
-}
-
-.phone-3d {
-  width: 70px;
-  height: 140px;
+.artifact-phone {
+  width: 50px;
+  height: 90px;
   background: linear-gradient(145deg, #1a1a2e, #16213e);
-  border-radius: 12px;
+  border-radius: 10px;
   padding: 4px;
+  flex-shrink: 0;
   box-shadow: 
-    0 15px 35px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.1),
-    inset 0 0 10px rgba(255, 255, 255, 0.05);
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    inset 0 0 8px rgba(255, 255, 255, 0.05);
   transform-style: preserve-3d;
-  animation: phoneFloat 6s ease-in-out infinite;
-  position: relative;
+  animation: artifactFloat 4s ease-in-out infinite;
 }
 
-.phone-3d::before {
-  content: '';
-  position: absolute;
-  top: 6px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 20px;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-}
-
-.phone-3d-screen {
+.artifact-phone-screen {
   width: 100%;
   height: 100%;
-  background: var(--bg-dark);
-  border-radius: 9px;
+  background: #0d1117;
+  border-radius: 7px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-.phone-3d-header {
-  padding: 10px 5px 4px;
+.artifact-phone-dots {
   display: flex;
-  align-items: center;
-  gap: 3px;
+  gap: 2px;
+  padding: 6px 4px 3px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.phone-3d-dot {
+.artifact-phone-dots span {
   width: 4px;
   height: 4px;
   border-radius: 50%;
 }
 
-.phone-3d-dot:nth-child(1) { background: #ff5f56; }
-.phone-3d-dot:nth-child(2) { background: #ffbd2e; }
-.phone-3d-dot:nth-child(3) { background: #27ca40; }
+.artifact-phone-dots span:nth-child(1) { background: #ff5f56; }
+.artifact-phone-dots span:nth-child(2) { background: #ffbd2e; }
+.artifact-phone-dots span:nth-child(3) { background: #27ca40; }
 
-.phone-3d-code {
+.artifact-phone-code {
   flex: 1;
-  padding: 5px;
-  overflow: hidden;
-  font-family: 'Fira Code', 'Consolas', monospace;
-  font-size: 4px;
+  padding: 4px;
+  font-family: 'Fira Code', monospace;
+  font-size: 3.5px;
   line-height: 1.3;
-  color: #a8d8ff;
+  color: #7dd3fc;
+  overflow: hidden;
 }
 
-.phone-3d-code .code-line {
+.artifact-code-line {
+  white-space: nowrap;
+  overflow: hidden;
+  opacity: 0;
+  animation: artifactType 0.2s ease forwards;
+}
+
+.artifact-code-line:nth-child(1) { animation-delay: 0.1s; }
+.artifact-code-line:nth-child(2) { animation-delay: 0.15s; }
+.artifact-code-line:nth-child(3) { animation-delay: 0.2s; }
+.artifact-code-line:nth-child(4) { animation-delay: 0.25s; }
+.artifact-code-line:nth-child(5) { animation-delay: 0.3s; }
+.artifact-code-line:nth-child(6) { animation-delay: 0.35s; }
+.artifact-code-line:nth-child(7) { animation-delay: 0.4s; }
+.artifact-code-line:nth-child(8) { animation-delay: 0.45s; }
+
+.artifact-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.artifact-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text);
+  margin-bottom: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  opacity: 0;
-  animation: typeIn 0.3s ease forwards;
 }
 
-.phone-3d-code .code-line:nth-child(1) { animation-delay: 0.1s; }
-.phone-3d-code .code-line:nth-child(2) { animation-delay: 0.15s; }
-.phone-3d-code .code-line:nth-child(3) { animation-delay: 0.2s; }
-.phone-3d-code .code-line:nth-child(4) { animation-delay: 0.25s; }
-.phone-3d-code .code-line:nth-child(5) { animation-delay: 0.3s; }
-.phone-3d-code .code-line:nth-child(6) { animation-delay: 0.35s; }
-.phone-3d-code .code-line:nth-child(7) { animation-delay: 0.4s; }
-.phone-3d-code .code-line:nth-child(8) { animation-delay: 0.45s; }
-.phone-3d-code .code-line:nth-child(9) { animation-delay: 0.5s; }
-.phone-3d-code .code-line:nth-child(10) { animation-delay: 0.55s; }
+.artifact-subtitle {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
 
-.phone-3d-code .keyword { color: #ff79c6; }
-.phone-3d-code .string { color: #f1fa8c; }
-.phone-3d-code .function { color: #50fa7b; }
-.phone-3d-code .comment { color: #6272a4; }
+.artifact-arrow {
+  color: var(--muted);
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
 
-@keyframes phoneFloat {
+.artifact-card:hover .artifact-arrow {
+  color: var(--accent);
+  transform: translateX(4px);
+}
+
+@keyframes artifactFloat {
   0%, 100% {
-    transform: rotateY(-12deg) rotateX(8deg) translateY(0);
+    transform: rotateY(-8deg) rotateX(5deg);
   }
   50% {
-    transform: rotateY(12deg) rotateX(-5deg) translateY(-5px);
+    transform: rotateY(8deg) rotateX(-3deg);
   }
 }
 
-@keyframes typeIn {
+@keyframes artifactType {
   from {
     opacity: 0;
-    transform: translateX(-5px);
+    transform: translateX(-3px);
   }
   to {
     opacity: 1;
@@ -953,10 +965,24 @@ body {
   }
 }
 
-/* Hide phone on mobile */
+/* Mobile artifact */
 @media (max-width: 768px) {
-  .phone-3d-container {
-    display: none;
+  .artifact-card {
+    padding: 10px 12px;
+    gap: 12px;
+  }
+  
+  .artifact-phone {
+    width: 40px;
+    height: 72px;
+  }
+  
+  .artifact-title {
+    font-size: 0.9rem;
+  }
+  
+  .artifact-subtitle {
+    font-size: 0.75rem;
   }
 }
 
@@ -1590,15 +1616,44 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .code-preview-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 18px;
-  background: rgba(59, 158, 255, 0.1);
-  border-bottom: 1px solid var(--border);
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(59, 158, 255, 0.15), rgba(96, 179, 255, 0.1));
+  border-bottom: 1px solid var(--border-accent);
+}
+
+.code-preview-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.code-preview-icon {
+  width: 36px;
+  height: 36px;
+  background: var(--gradient);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
 }
 
 .code-preview-lang {
@@ -1606,6 +1661,7 @@ body {
   font-size: 0.6rem;
   color: var(--accent-light);
   text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .code-preview-actions {
@@ -1614,36 +1670,44 @@ body {
 }
 
 .code-preview-actions button {
-  background: rgba(59, 158, 255, 0.15);
-  border: 1px solid var(--border);
-  padding: 10px;
-  border-radius: 8px;
-  color: var(--accent-light);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.8);
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
   align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
 }
 
 .code-preview-actions button:hover {
-  background: rgba(59, 158, 255, 0.25);
+  background: rgba(255, 255, 255, 0.15);
   color: #fff;
+  transform: translateY(-1px);
 }
 
 .code-preview-content {
   flex: 1;
   overflow: auto;
-  padding: 18px;
+  padding: 20px;
+  background: #0d1117;
 }
 
-.code-preview-content pre { margin: 0; }
+.code-preview-content pre { 
+  margin: 0;
+  counter-reset: line;
+}
 
 .code-preview-content code {
   font-family: 'Fira Code', 'Consolas', 'Monaco', monospace;
   font-size: 0.9rem;
-  line-height: 1.7;
+  line-height: 1.8;
   color: #e6edf3;
   white-space: pre;
+  display: block;
 }
 
 /* Sidebar Overlay */
