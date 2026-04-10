@@ -3028,3 +3028,262 @@ button {
     font-size: 0.9rem;
   }
 }
+
+/* ==================== 2026 NEO LIQUID GLASS REFRESH ==================== */
+:root {
+  --neo-bg: #eef5ff;
+  --neo-bg2: #f8fbff;
+  --neo-ink: #092243;
+  --neo-accent-a: #16a3ff;
+  --neo-accent-b: #24d2c8;
+  --neo-warm: #ff9d3a;
+  --neo-glass: rgba(255, 255, 255, 0.62);
+  --neo-glass-strong: rgba(255, 255, 255, 0.8);
+  --neo-border: rgba(13, 92, 176, 0.16);
+  --neo-shadow: 0 24px 70px rgba(10, 60, 128, 0.15);
+}
+
+[data-theme="dark"] {
+  --neo-bg: #060b13;
+  --neo-bg2: #0b1321;
+  --neo-ink: #edf5ff;
+  --neo-accent-a: #2ab4ff;
+  --neo-accent-b: #35dfcf;
+  --neo-warm: #ffa24b;
+  --neo-glass: rgba(14, 25, 41, 0.54);
+  --neo-glass-strong: rgba(20, 34, 53, 0.78);
+  --neo-border: rgba(70, 150, 255, 0.26);
+  --neo-shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background:
+    radial-gradient(1200px 700px at 10% -10%, color-mix(in srgb, var(--neo-accent-a) 25%, transparent), transparent 60%),
+    radial-gradient(900px 600px at 100% 0%, color-mix(in srgb, var(--neo-warm) 18%, transparent), transparent 55%),
+    linear-gradient(160deg, var(--neo-bg), var(--neo-bg2));
+  color: var(--neo-ink);
+}
+
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  inset: auto;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::before {
+  width: 360px;
+  height: 360px;
+  left: -90px;
+  top: 22%;
+  border-radius: 999px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--neo-accent-b) 38%, transparent), transparent 70%);
+  filter: blur(24px);
+}
+
+body::after {
+  width: 420px;
+  height: 420px;
+  right: -120px;
+  bottom: 10%;
+  border-radius: 999px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--neo-warm) 28%, transparent), transparent 72%);
+  filter: blur(28px);
+}
+
+.app,
+.auth-screen {
+  position: relative;
+  z-index: 1;
+  background: transparent;
+}
+
+.sidebar,
+.topbar,
+.input-box,
+.model-menu,
+.settings-modal,
+.premium-modal-new,
+.auth-box,
+.code-preview-panel,
+.artifact-card,
+.welcome {
+  background: var(--neo-glass) !important;
+  border: 1px solid var(--neo-border) !important;
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  box-shadow: var(--neo-shadow);
+}
+
+.topbar {
+  margin: 14px 14px 8px;
+  border-radius: 18px;
+}
+
+.sidebar {
+  border-right: 1px solid var(--neo-border);
+}
+
+.main {
+  background: transparent;
+}
+
+.chat-area {
+  background: transparent;
+  padding-top: 14px;
+}
+
+.message-wrapper {
+  animation: neoMessageIn 0.32s ease both;
+}
+
+.message {
+  border-radius: 18px;
+  border: 1px solid var(--neo-border);
+  backdrop-filter: blur(10px) saturate(145%);
+  -webkit-backdrop-filter: blur(10px) saturate(145%);
+}
+
+.message.assistant {
+  background: color-mix(in srgb, var(--neo-glass-strong) 82%, transparent) !important;
+}
+
+.message.user {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--neo-accent-a) 72%, #fff 28%), color-mix(in srgb, var(--neo-warm) 58%, #fff 42%)) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 0 16px 34px rgba(255, 126, 43, 0.24);
+}
+
+.message.user .message-text,
+.message.user .message-mode {
+  color: #fff !important;
+}
+
+.model-selector-btn,
+.mode-btn,
+.theme-toggle,
+.settings-btn,
+.new-chat-btn,
+.clear-all-btn,
+.send-btn,
+.attach-btn,
+.auth-submit,
+.upgrade-btn,
+.premium-buy-btn,
+.premium-btn {
+  border-radius: 14px !important;
+  border: 1px solid var(--neo-border) !important;
+  transition: transform 0.16s ease, box-shadow 0.22s ease, background 0.2s ease;
+}
+
+.model-selector-btn:hover,
+.mode-btn:hover,
+.theme-toggle:hover,
+.settings-btn:hover,
+.new-chat-btn:hover,
+.clear-all-btn:hover,
+.send-btn:hover,
+.attach-btn:hover,
+.auth-submit:hover,
+.upgrade-btn:hover,
+.premium-buy-btn:hover,
+.premium-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(27, 142, 255, 0.25);
+}
+
+.mode-btn.active,
+.send-btn,
+.auth-submit,
+.new-chat-btn,
+.premium-buy-btn,
+.premium-btn {
+  background: linear-gradient(135deg, var(--neo-accent-a), var(--neo-accent-b)) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+.send-btn {
+  box-shadow: 0 10px 24px rgba(39, 178, 255, 0.35);
+}
+
+.chat-item {
+  border-radius: 14px;
+  border: 1px solid transparent;
+}
+
+.chat-item:hover {
+  background: color-mix(in srgb, var(--neo-accent-a) 12%, transparent);
+  border-color: var(--neo-border);
+}
+
+.chat-item.active {
+  background: color-mix(in srgb, var(--neo-accent-a) 22%, transparent) !important;
+  border-color: color-mix(in srgb, var(--neo-accent-a) 55%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--neo-accent-a) 45%, transparent);
+}
+
+.input-box textarea,
+.input-box input,
+.auth-form input {
+  background: color-mix(in srgb, var(--neo-glass-strong) 88%, transparent) !important;
+  border: 1px solid var(--neo-border) !important;
+  border-radius: 14px !important;
+}
+
+.input-box textarea:focus,
+.input-box input:focus,
+.auth-form input:focus {
+  border-color: color-mix(in srgb, var(--neo-accent-a) 60%, transparent) !important;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--neo-accent-a) 18%, transparent) !important;
+}
+
+.welcome-icon {
+  background: linear-gradient(140deg, var(--neo-accent-a), var(--neo-warm)) !important;
+  box-shadow: 0 14px 30px rgba(36, 167, 255, 0.28);
+}
+
+.toast {
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+}
+
+@keyframes neoMessageIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 900px) {
+  .topbar {
+    margin: 10px 10px 6px;
+    border-radius: 14px;
+  }
+
+  .sidebar,
+  .topbar,
+  .input-box,
+  .model-menu,
+  .settings-modal,
+  .premium-modal-new,
+  .auth-box,
+  .code-preview-panel,
+  .artifact-card,
+  .welcome {
+    backdrop-filter: blur(12px) saturate(145%);
+    -webkit-backdrop-filter: blur(12px) saturate(145%);
+  }
+
+  .message {
+    border-radius: 14px;
+  }
+}
