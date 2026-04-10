@@ -763,12 +763,14 @@ export default function Home() {
       }
 
       if (reader) {
+        let sseBuffer = ''
         while (true) {
           const { done, value } = await reader.read()
           if (done) break
 
-          const chunk = decoder.decode(value)
-          const lines = chunk.split('\n')
+          sseBuffer += decoder.decode(value, { stream: true })
+          const lines = sseBuffer.split('\n')
+          sseBuffer = lines.pop() || ''
 
           for (const line of lines) {
             if (line.startsWith('data: ')) {
@@ -791,6 +793,29 @@ export default function Home() {
                 }
               } catch {}
             }
+          }
+        }
+
+        // Process possible last buffered SSE line without trailing newline.
+        const finalLine = sseBuffer.trim()
+        if (finalLine.startsWith('data: ')) {
+          const data = finalLine.slice(6)
+          if (data !== '[DONE]') {
+            try {
+              const parsed = JSON.parse(data)
+              if (parsed.sources) {
+                sources = parsed.sources
+                setStreamingSources(sources)
+              }
+              if (parsed.content) {
+                fullContent += parsed.content
+                smoothDisplay()
+              }
+              if (parsed.generatedImage) {
+                generatedImage = parsed.generatedImage
+                setStreamingImage(generatedImage)
+              }
+            } catch {}
           }
         }
       }
