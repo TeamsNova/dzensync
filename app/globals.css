@@ -3031,29 +3031,29 @@ button {
 
 /* ==================== 2026 NEO LIQUID GLASS REFRESH ==================== */
 :root {
-  --neo-bg: #eef5ff;
-  --neo-bg2: #f8fbff;
-  --neo-ink: #092243;
-  --neo-accent-a: #16a3ff;
-  --neo-accent-b: #24d2c8;
-  --neo-warm: #ff9d3a;
+  --neo-bg: var(--bg);
+  --neo-bg2: var(--bg2);
+  --neo-ink: var(--text);
+  --neo-accent-a: var(--accent);
+  --neo-accent-b: var(--accent2);
+  --neo-warm: var(--accent2);
   --neo-glass: rgba(255, 255, 255, 0.62);
   --neo-glass-strong: rgba(255, 255, 255, 0.8);
-  --neo-border: rgba(13, 92, 176, 0.16);
-  --neo-shadow: 0 24px 70px rgba(10, 60, 128, 0.15);
+  --neo-border: var(--border);
+  --neo-shadow: var(--shadow);
 }
 
 [data-theme="dark"] {
-  --neo-bg: #060b13;
-  --neo-bg2: #0b1321;
-  --neo-ink: #edf5ff;
-  --neo-accent-a: #2ab4ff;
-  --neo-accent-b: #35dfcf;
-  --neo-warm: #ffa24b;
+  --neo-bg: var(--bg);
+  --neo-bg2: var(--bg2);
+  --neo-ink: var(--text);
+  --neo-accent-a: var(--accent);
+  --neo-accent-b: var(--accent2);
+  --neo-warm: var(--accent2);
   --neo-glass: rgba(14, 25, 41, 0.54);
   --neo-glass-strong: rgba(20, 34, 53, 0.78);
-  --neo-border: rgba(70, 150, 255, 0.26);
-  --neo-shadow: 0 28px 90px rgba(0, 0, 0, 0.42);
+  --neo-border: var(--border);
+  --neo-shadow: var(--shadow);
 }
 
 body {
