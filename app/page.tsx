@@ -735,7 +735,17 @@ export default function Home() {
       })
 
       if (!response.ok) {
-        throw new Error('API error')
+        let errorMessage = 'API error'
+        try {
+          const errorData = await response.json()
+          if (errorData?.error) errorMessage = String(errorData.error)
+        } catch {
+          try {
+            const errorText = await response.text()
+            if (errorText) errorMessage = errorText
+          } catch {}
+        }
+        throw new Error(errorMessage)
       }
 
       const reader = response.body?.getReader()
@@ -859,12 +869,13 @@ export default function Home() {
       
       // Increment message count after successful response
       await incrementMessageCount(mode === 'research')
-    } catch {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error && err.message ? err.message : 'Ошибка соединения'
       setChats(prev => prev.map(chat => {
         if (chat.id === chatId) {
           return {
             ...chat,
-            messages: [...chat.messages, { role: 'error', content: 'Ошибка соединения' }]
+            messages: [...chat.messages, { role: 'error', content: errorMessage }]
           }
         }
         return chat

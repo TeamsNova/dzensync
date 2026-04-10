@@ -412,59 +412,35 @@ export async function POST(request: NextRequest) {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'HTTP-Referer': 'https://dzensync.vercel.app',
+          'X-Title': 'Zenith Sync',
         },
         body: JSON.stringify({
           model: OPENROUTER_CODEX_MODEL,
           messages,
           temperature: 0.3,
-          stream: true,
+          stream: false,
         }),
       })
 
       if (!orResponse.ok) {
         const errorText = await orResponse.text()
-        throw new Error(`OpenRouter API error: ${orResponse.status} ${errorText}`)
+        return new Response(JSON.stringify({ error: `OpenRouter error ${orResponse.status}: ${errorText}` }), { status: orResponse.status })
       }
 
+      const data = await orResponse.json()
+      const fullContent =
+        data?.choices?.[0]?.message?.content ||
+        data?.choices?.[0]?.text ||
+        data?.output_text ||
+        ''
+
       const encoder = new TextEncoder()
-      const decoder = new TextDecoder()
       const readable = new ReadableStream({
         async start(controller) {
           try {
-            const reader = orResponse.body?.getReader()
-            if (!reader) {
-              throw new Error('OpenRouter stream is not available')
-            }
-
-            let fullContent = ''
-            let buffer = ''
-
-            while (true) {
-              const { done, value } = await reader.read()
-              if (done) break
-
-              buffer += decoder.decode(value, { stream: true })
-              const lines = buffer.split('\n')
-              buffer = lines.pop() || ''
-
-              for (const rawLine of lines) {
-                const line = rawLine.trim()
-                if (!line.startsWith('data: ')) continue
-
-                const data = line.slice(6).trim()
-                if (!data || data === '[DONE]') continue
-
-                try {
-                  const parsed = JSON.parse(data)
-                  const delta = parsed?.choices?.[0]?.delta?.content || ''
-                  if (delta) {
-                    fullContent += delta
-                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: delta })}\n\n`))
-                  }
-                } catch {
-                  // Ignore malformed chunks and continue streaming.
-                }
-              }
+            if (fullContent) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: fullContent })}\n\n`))
             }
 
             const imageMatch = fullContent.match(/\[GENERATE_IMAGE:\s*(.+?)\]/)
