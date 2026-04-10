@@ -82,6 +82,9 @@ interface Attachment {
 type ModelId = 'sync' | 'summit' | 'apex'
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
+const OPENROUTER_BASE_URL = (process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1').replace(/\/$/, '')
+const OPENROUTER_CODEX_MODEL = process.env.OPENROUTER_CODEX_MODEL || 'qwen/qwen3.6-plus-preview:free'
 
 async function generateWithGemini(params: {
   systemPrompt: string
@@ -399,6 +402,97 @@ export async function POST(request: NextRequest) {
       { role: 'user', content: userContent },
     ]
 
+    if (mode === 'codex') {
+      if (!OPENROUTER_API_KEY) {
+        return new Response(JSON.stringify({ error: 'OPENROUTER_API_KEY не настроен для Codex режима' }), { status: 500 })
+      }
+
+      const orResponse = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: OPENROUTER_CODEX_MODEL,
+          messages,
+          temperature: 0.3,
+          stream: true,
+        }),
+      })
+
+      if (!orResponse.ok) {
+        const errorText = await orResponse.text()
+        throw new Error(`OpenRouter API error: ${orResponse.status} ${errorText}`)
+      }
+
+      const encoder = new TextEncoder()
+      const decoder = new TextDecoder()
+      const readable = new ReadableStream({
+        async start(controller) {
+          try {
+            const reader = orResponse.body?.getReader()
+            if (!reader) {
+              throw new Error('OpenRouter stream is not available')
+            }
+
+            let fullContent = ''
+            let buffer = ''
+
+            while (true) {
+              const { done, value } = await reader.read()
+              if (done) break
+
+              buffer += decoder.decode(value, { stream: true })
+              const lines = buffer.split('\n')
+              buffer = lines.pop() || ''
+
+              for (const rawLine of lines) {
+                const line = rawLine.trim()
+                if (!line.startsWith('data: ')) continue
+
+                const data = line.slice(6).trim()
+                if (!data || data === '[DONE]') continue
+
+                try {
+                  const parsed = JSON.parse(data)
+                  const delta = parsed?.choices?.[0]?.delta?.content || ''
+                  if (delta) {
+                    fullContent += delta
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: delta })}\n\n`))
+                  }
+                } catch {
+                  // Ignore malformed chunks and continue streaming.
+                }
+              }
+            }
+
+            const imageMatch = fullContent.match(/\[GENERATE_IMAGE:\s*(.+?)\]/)
+            if (imageMatch) {
+              const imagePrompt = imageMatch[1].trim()
+              const imageUrl = await generateImage(imagePrompt)
+              if (imageUrl) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ generatedImage: imageUrl })}\n\n`))
+              }
+            }
+
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+            controller.close()
+          } catch (error) {
+            controller.error(error)
+          }
+        },
+      })
+
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      })
+    }
+
     if (requestedModelId === 'apex') {
       const encoder = new TextEncoder()
       const readable = new ReadableStream({
@@ -513,7 +607,7 @@ export async function POST(request: NextRequest) {
 
     throw lastError || new Error('All API keys exhausted')
   } catch (error: unknown) {
-    console.error('Groq API error:', error)
+    console.error('Chat API error:', error)
     return new Response(JSON.stringify({ error: 'Ошибка генерации. Попробуй позже.' }), { status: 500 })
   }
 }
