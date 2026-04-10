@@ -79,6 +79,55 @@ interface Attachment {
   mimeType?: string
 }
 
+type ModelId = 'sync' | 'summit' | 'apex'
+
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY
+
+async function generateWithGemini(params: {
+  systemPrompt: string
+  history: { role: string; content: string }[]
+  userContent: string
+  mode: string
+}): Promise<string> {
+  if (!GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY is not configured')
+  }
+
+  const contents = [
+    ...(params.history || []).map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content || '' }],
+    })),
+    { role: 'user', parts: [{ text: params.userContent || '' }] },
+  ]
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: params.systemPrompt }] },
+        contents,
+        generationConfig: {
+          temperature: (params.mode === 'thinking' || params.mode === 'research') ? 0.3 : 0.7,
+          maxOutputTokens: params.mode === 'research' ? 4000 : (params.mode === 'thinking' ? 2000 : 1500),
+        },
+      }),
+    }
+  )
+
+  if (!response.ok) {
+    const errText = await response.text()
+    throw new Error(`Gemini API error: ${response.status} ${errText}`)
+  }
+
+  const data = await response.json()
+  const parts = data?.candidates?.[0]?.content?.parts || []
+  const text = parts.map((p: { text?: string }) => p.text || '').join('')
+  return text || 'Не удалось получить ответ от Gemini.'
+}
+
 async function searchDuckDuckGo(query: string): Promise<TavilyResult[]> {
   try {
     const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`
@@ -274,13 +323,19 @@ const CODEX_PROMPT = `Ты — Zenith Summit 3.0 Codex, специализиро
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, history, mode, isPremium, modelName, attachments, memoryContext } = await request.json()
+    const { message, history, mode, isPremium, modelId, modelName, attachments, memoryContext } = await request.json()
 
     if (!message && (!attachments || attachments.length === 0)) {
       return new Response(JSON.stringify({ error: 'Сообщение пустое' }), { status: 400 })
     }
 
-    if (GROQ_KEYS.length === 0) {
+    const requestedModelId: ModelId = modelId === 'apex' || modelId === 'summit' ? modelId : 'sync'
+
+    if (requestedModelId === 'apex' && !isPremium) {
+      return new Response(JSON.stringify({ error: 'Zenith Apex 4.5 Pro доступна только с Premium.' }), { status: 403 })
+    }
+
+    if (requestedModelId !== 'apex' && GROQ_KEYS.length === 0) {
       return new Response(JSON.stringify({ error: 'API ключи не настроены' }), { status: 500 })
     }
 
@@ -291,17 +346,7 @@ export async function POST(request: NextRequest) {
     const fileAttachments = (attachments || []).filter((a: Attachment) => a.type === 'file')
     const hasImages = imageAttachments.length > 0
     
-    let model: string
-    if (mode === 'research') {
-      model = isPremium ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant'
-    } else if (mode === 'codex') {
-      // Codex mode - use best coding model available
-      model = 'llama-3.3-70b-versatile'
-    } else if (isPremium) {
-      model = 'llama-3.3-70b-versatile'
-    } else {
-      model = 'llama-3.1-8b-instant'
-    }
+    const model = requestedModelId === 'summit' ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant'
 
     let systemPrompt = SYSTEM_PROMPT.replace(/Zenith Sync 3\.0/g, botName)
     let userContent: string = message || ''
@@ -353,6 +398,51 @@ export async function POST(request: NextRequest) {
       })),
       { role: 'user', content: userContent },
     ]
+
+    if (requestedModelId === 'apex') {
+      const encoder = new TextEncoder()
+      const readable = new ReadableStream({
+        async start(controller) {
+          try {
+            if (mode === 'search' && searchResults.length > 0) {
+              const sources = searchResults.map(r => ({ title: r.title, url: r.url }))
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ sources })}\n\n`))
+            }
+            
+            const fullContent = await generateWithGemini({
+              systemPrompt,
+              history: (history || []).filter((m: { role: string }) => m.role === 'user' || m.role === 'assistant'),
+              userContent,
+              mode,
+            })
+            
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: fullContent })}\n\n`))
+            
+            const imageMatch = fullContent.match(/\[GENERATE_IMAGE:\s*(.+?)\]/)
+            if (imageMatch) {
+              const imagePrompt = imageMatch[1].trim()
+              const imageUrl = await generateImage(imagePrompt)
+              if (imageUrl) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ generatedImage: imageUrl })}\n\n`))
+              }
+            }
+            
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'))
+            controller.close()
+          } catch (error) {
+            controller.error(error)
+          }
+        },
+      })
+
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      })
+    }
 
     // Попытка с ротацией ключей
     let lastError: any = null

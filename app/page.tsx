@@ -55,6 +55,7 @@ interface Attachment {
 }
 
 type Mode = 'normal' | 'thinking' | 'search' | 'research' | 'codex'
+type ModelId = 'sync' | 'summit' | 'apex'
 
 export default function Home() {
   const [user, setUser] = useState<User | null>(null)
@@ -70,7 +71,8 @@ export default function Home() {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [limitModalOpen, setLimitModalOpen] = useState(false)
   const [premiumModalOpen, setPremiumModalOpen] = useState(false)
-  const FREE_LIMIT = 20
+  const SYNC_LIMIT = 50
+  const SUMMIT_LIMIT = 10
   const RESEARCH_LIMIT = 5
   
   const [chats, setChats] = useState<Chat[]>([])
@@ -84,7 +86,7 @@ export default function Home() {
   const [isListening, setIsListening] = useState(false)
   const [codePreview, setCodePreview] = useState<CodePreview | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [selectedModel, setSelectedModel] = useState<'free' | 'pro'>('free')
+  const [selectedModel, setSelectedModel] = useState<ModelId>('sync')
   const [modelMenuOpen, setModelMenuOpen] = useState(false)
   const [theme, setTheme] = useState<'light' | 'dark'>('light')
   const [toast, setToast] = useState<string | null>(null)
@@ -196,16 +198,42 @@ export default function Home() {
   // Load saved model from localStorage
   useEffect(() => {
     const savedModel = localStorage.getItem('zenith-model')
-    if (savedModel === 'pro' || savedModel === 'free') {
+    if (savedModel === 'sync' || savedModel === 'summit' || savedModel === 'apex') {
       setSelectedModel(savedModel)
     }
   }, [])
 
   // Save model to localStorage when changed
-  const changeModel = (model: 'free' | 'pro') => {
+  const changeModel = (model: ModelId) => {
     setSelectedModel(model)
     localStorage.setItem('zenith-model', model)
     setModelMenuOpen(false)
+  }
+  
+  useEffect(() => {
+    if (!profile?.is_premium && selectedModel === 'apex') {
+      setSelectedModel('sync')
+      localStorage.setItem('zenith-model', 'sync')
+    }
+  }, [profile?.is_premium, selectedModel])
+  
+  const getModelDailyLimit = () => {
+    if (profile?.is_premium) return Infinity
+    if (selectedModel === 'summit') return SUMMIT_LIMIT
+    if (selectedModel === 'sync') return SYNC_LIMIT
+    return 0
+  }
+  
+  const getModelName = (model: ModelId) => {
+    if (model === 'summit') return 'Zenith Summit 3.5 Pro'
+    if (model === 'apex') return 'Zenith Apex 4.5 Pro'
+    return 'Zenith Sync 3.0'
+  }
+  
+  const canUseSelectedModel = () => {
+    if (!profile) return false
+    if (profile.is_premium) return true
+    return selectedModel !== 'apex'
   }
   const recognitionRef = useRef<any>(null)
 
@@ -324,7 +352,8 @@ export default function Home() {
   const canSendMessage = () => {
     if (!profile) return false
     if (profile.is_premium) return true
-    return profile.messages_today < FREE_LIMIT
+    const modelLimit = getModelDailyLimit()
+    return profile.messages_today < modelLimit
   }
 
   const canUseResearch = () => {
@@ -342,7 +371,7 @@ export default function Home() {
   const messagesLeft = () => {
     if (!profile) return 0
     if (profile.is_premium) return Infinity
-    return Math.max(0, FREE_LIMIT - profile.messages_today)
+    return Math.max(0, getModelDailyLimit() - profile.messages_today)
   }
 
   useEffect(() => {
@@ -626,6 +655,11 @@ export default function Home() {
   const sendMessage = async () => {
     if ((!input.trim() && attachments.length === 0) || isLoading) return
     
+    if (!canUseSelectedModel()) {
+      setPremiumModalOpen(true)
+      return
+    }
+    
     // Check message limit
     if (!canSendMessage()) {
       setLimitModalOpen(true)
@@ -692,8 +726,9 @@ export default function Home() {
           message: userMessage,
           history: [...chatMessages, { role: 'user', content: userMessage }].filter(m => m.role !== 'error').slice(-10),
           mode,
-          isPremium: profile?.is_premium && selectedModel === 'pro',
-          modelName: selectedModel === 'pro' ? 'Zenith Summit 3.5 Pro' : 'Zenith Sync 3.0',
+          isPremium: !!profile?.is_premium,
+          modelId: selectedModel,
+          modelName: getModelName(selectedModel),
           attachments: currentAttachments,
           memoryContext
         }),
@@ -1176,7 +1211,7 @@ export default function Home() {
           <div className="model-selector-wrapper">
             <button className="model-selector-btn" onClick={() => setModelMenuOpen(!modelMenuOpen)}>
               <span className="model-name">
-                {selectedModel === 'pro' ? 'Zenith Summit 3.5 Pro' : 'Zenith Sync 3.0'}
+                {getModelName(selectedModel)}
               </span>
               <i data-lucide="chevron-down" style={{width: 16, height: 16}}></i>
             </button>
@@ -1185,20 +1220,34 @@ export default function Home() {
                 <div className="model-menu-overlay" onClick={() => setModelMenuOpen(false)} />
                 <div className="model-menu">
                   <button 
-                    className={`model-option ${selectedModel === 'free' ? 'active' : ''}`}
-                    onClick={() => { changeModel('free'); }}
+                    className={`model-option ${selectedModel === 'sync' ? 'active' : ''}`}
+                    onClick={() => { changeModel('sync'); }}
                   >
                     <div className="model-option-info">
                       <span className="model-option-name">Zenith Sync 3.0</span>
                       <span className="model-option-desc">Быстрая модель для повседневных задач</span>
                     </div>
-                    {selectedModel === 'free' && <i data-lucide="check" style={{width: 16, height: 16}}></i>}
+                    {selectedModel === 'sync' && <i data-lucide="check" style={{width: 16, height: 16}}></i>}
                   </button>
                   <button 
-                    className={`model-option pro ${selectedModel === 'pro' ? 'active' : ''} ${!profile?.is_premium ? 'locked' : ''}`}
+                    className={`model-option pro ${selectedModel === 'summit' ? 'active' : ''}`}
+                    onClick={() => { 
+                      changeModel('summit');
+                    }}
+                  >
+                    <div className="model-option-info">
+                      <div className="model-option-name-row">
+                        <span className="model-option-name">Zenith Summit 3.5 Pro</span>
+                      </div>
+                      <span className="model-option-desc">Продвинутая модель для сложных задач</span>
+                    </div>
+                    {selectedModel === 'summit' && <i data-lucide="check" style={{width: 16, height: 16}}></i>}
+                  </button>
+                  <button 
+                    className={`model-option pro ${selectedModel === 'apex' ? 'active' : ''} ${!profile?.is_premium ? 'locked' : ''}`}
                     onClick={() => { 
                       if (profile?.is_premium) {
-                        changeModel('pro');
+                        changeModel('apex');
                       } else {
                         setModelMenuOpen(false);
                         setPremiumModalOpen(true);
@@ -1207,12 +1256,12 @@ export default function Home() {
                   >
                     <div className="model-option-info">
                       <div className="model-option-name-row">
-                        <span className="model-option-name">Zenith Summit 3.5 Pro</span>
+                        <span className="model-option-name">Zenith Apex 4.5 Pro</span>
                         {!profile?.is_premium && <i data-lucide="lock" style={{width: 12, height: 12}}></i>}
                       </div>
-                      <span className="model-option-desc">Продвинутая модель для сложных задач</span>
+                      <span className="model-option-desc">Premium only • maximum quality</span>
                     </div>
-                    {selectedModel === 'pro' && profile?.is_premium && <i data-lucide="check" style={{width: 16, height: 16}}></i>}
+                    {selectedModel === 'apex' && profile?.is_premium && <i data-lucide="check" style={{width: 16, height: 16}}></i>}
                   </button>
                 </div>
               </>
@@ -1503,7 +1552,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <div className="free-info">
-                    <span>Осталось сообщений: {messagesLeft()}/{FREE_LIMIT}</span>
+                    <span>Осталось сообщений ({getModelName(selectedModel)}): {messagesLeft()}/{getModelDailyLimit()}</span>
                     <button className="upgrade-btn" onClick={() => { setSettingsOpen(false); setPremiumModalOpen(true); }}>
                       <i data-lucide="crown" style={{width: 14, height: 14}}></i>
                       Получить Premium
@@ -1550,7 +1599,7 @@ export default function Home() {
               <div className="limit-icon">
                 <i data-lucide="alert-circle" style={{width: 48, height: 48}}></i>
               </div>
-              <p className="limit-text">Вы использовали все {FREE_LIMIT} бесплатных сообщений на сегодня.</p>
+              <p className="limit-text">Вы использовали все {getModelDailyLimit()} запросов на сегодня для {getModelName(selectedModel)}.</p>
               <p className="limit-subtext">Лимит обновится завтра или получите Premium для безлимитного доступа.</p>
               <button className="premium-btn" onClick={() => { setLimitModalOpen(false); setPremiumModalOpen(true); }}>
                 <i data-lucide="crown" style={{width: 18, height: 18}}></i>
