@@ -3287,3 +3287,95 @@ body::after {
     border-radius: 14px;
   }
 }
+
+/* ==================== BORDER SOFTEN PATCH ==================== */
+:root {
+  --soft-border: rgba(255, 255, 255, 0.06);
+  --soft-ring: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme="dark"] {
+  --soft-border: rgba(255, 255, 255, 0.08);
+  --soft-ring: rgba(255, 255, 255, 0.05);
+}
+
+.topbar,
+.welcome,
+.input-box,
+.model-menu,
+.settings-modal,
+.premium-modal-new,
+.code-preview-panel,
+.artifact-card,
+.auth-box,
+.sidebar,
+.message.assistant,
+.mode-card,
+.mode-card.research,
+.mode-card.codex {
+  border-color: var(--soft-border) !important;
+  box-shadow:
+    0 12px 34px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 var(--soft-ring) !important;
+}
+
+.message {
+  border-radius: 22px !important;
+}
+
+.message.user {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  border-radius: 20px !important;
+}
+
+.topbar {
+  border-radius: 18px !important;
+}
+
+.welcome {
+  border-radius: 24px !important;
+}
+
+.input-box {
+  border-radius: 20px !important;
+}
+
+.mode-card,
+.mode-card.research,
+.mode-card.codex,
+.mode-btn,
+.model-selector-btn,
+.theme-toggle,
+.settings-btn,
+.new-chat-btn,
+.clear-all-btn,
+.send-btn,
+.attach-btn,
+.auth-submit,
+.upgrade-btn,
+.premium-buy-btn,
+.premium-btn,
+.message-menu-btn {
+  border-radius: 14px !important;
+  border-color: var(--soft-border) !important;
+}
+
+.model-menu,
+.settings-modal,
+.premium-modal-new,
+.code-preview-panel,
+.artifact-card,
+.auth-box {
+  border-radius: 18px !important;
+}
+
+.chat-item {
+  border-radius: 12px !important;
+}
+
+@media (max-width: 980px) {
+  .message { border-radius: 16px !important; }
+  .message.user { border-radius: 14px !important; }
+  .welcome { border-radius: 16px !important; }
+  .topbar { border-radius: 12px !important; }
+}
