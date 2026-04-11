@@ -541,6 +541,7 @@ body {
 .model-selector-wrapper {
   position: relative;
   flex: 1;
+  z-index: 260;
 }
 
 .model-selector-btn {
@@ -573,7 +574,8 @@ body {
 .model-menu-overlay {
   position: fixed;
   inset: 0;
-  z-index: 99;
+  z-index: 1200;
+  background: rgba(0, 0, 0, 0.12);
 }
 
 .model-menu {
@@ -585,7 +587,7 @@ body {
   border-radius: 14px;
   padding: 8px;
   min-width: 300px;
-  z-index: 100;
+  z-index: 1201;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15), 0 0 20px var(--accent-glow);
   animation: menuIn 0.2s ease-out;
 }
@@ -2379,6 +2381,7 @@ body {
     padding: 10px 12px;
     gap: 6px;
     flex-wrap: wrap;
+    overflow: visible;
   }
   
   .toggle-sidebar-btn,
@@ -2403,9 +2406,16 @@ body {
   }
   
   .model-menu {
-    min-width: 260px;
-    left: 0;
-    right: auto;
+    position: fixed;
+    top: 88px;
+    left: 12px;
+    right: 12px;
+    min-width: 0;
+    width: auto;
+    max-height: min(62vh, 520px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 16px;
   }
   
   /* Mode selector - SHOW on mobile but compact */
